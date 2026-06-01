@@ -24,16 +24,12 @@ input, select, textarea { font-size: 16px !important; }
 window.onerror = function(msg, src, line, col, err) {
   var d = document.getElementById('error-display');
   d.style.display = 'block';
-  d.innerText = 'ERROR: ' + msg + ' (line:' + line + ' col:' + col + ')\n' + (err ? err.stack : '');
+  d.innerText = 'ERROR: ' + msg + ' (line:' + line + ') ' + (err ? err.stack : '');
 };
-window.addEventListener('unhandledrejection', function(e) {
-  var d = document.getElementById('error-display');
-  d.style.display = 'block';
-  d.innerText = 'PROMISE ERROR: ' + e.reason;
-});
 </script>
 <script>
-const { useState, useRef, useCallback, useEffect } = React;
+var _useState = React.useState, _useRef = React.useRef, _useCallback = React.useCallback, _useEffect = React.useEffect;
+var useState = _useState, useRef = _useRef, useCallback = _useCallback, useEffect = _useEffect;
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -43,8 +39,8 @@ function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 // 日本の祝日データ（固定祝日 + ハッピーマンデー計算）
 function getJapaneseHolidays(year) {
   const holidays = {};
-  const add = (m, d, name) => {
-    holidays[`${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`] = name;
+  const add = function (m, d, name) {
+    holidays["".concat(year, "-").concat(String(m).padStart(2, '0'), "-").concat(String(d).padStart(2, '0'))] = name;
   };
 
   // 固定祝日
@@ -60,7 +56,7 @@ function getJapaneseHolidays(year) {
   add(11, 23, '勤労感謝の日');
 
   // ハッピーマンデー
-  const nthMonday = (m, n) => {
+  const nthMonday = function (m, n) {
     let d = new Date(year, m - 1, 1);
     let count = 0;
     while (true) {
@@ -86,26 +82,28 @@ function getJapaneseHolidays(year) {
 
   // 振替休日の計算
   const keys = Object.keys(holidays).sort();
-  keys.forEach(key => {
+  keys.forEach(function (key) {
     const d = new Date(key + 'T12:00:00');
     if (d.getDay() === 0) {
       // 日曜なら翌日が振替
       const next = new Date(d);
       next.setDate(next.getDate() + 1);
-      const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+      const nextKey = "".concat(next.getFullYear(), "-").concat(String(next.getMonth() + 1).padStart(2, '0'), "-").concat(String(next.getDate()).padStart(2, '0'));
       if (!holidays[nextKey]) holidays[nextKey] = '振替休日';
     }
   });
 
   // 国民の休日（祝日に挟まれた平日）
   const allKeys = Object.keys(holidays).sort();
-  allKeys.forEach(key => {
+  allKeys.forEach(function (key) {
     const d = new Date(key + 'T12:00:00');
     const prev = new Date(d);
     prev.setDate(prev.getDate() - 1);
     const next2 = new Date(d);
     next2.setDate(next2.getDate() + 1);
-    const fmt = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    const fmt = function (x) {
+      return "".concat(x.getFullYear(), "-").concat(String(x.getMonth() + 1).padStart(2, '0'), "-").concat(String(x.getDate()).padStart(2, '0'));
+    };
     if (holidays[fmt(prev)] && holidays[fmt(next2)] && !holidays[key]) {
       if (d.getDay() !== 0) holidays[key] = '国民の休日';
     }
@@ -146,7 +144,7 @@ function saveEv(l) {
   localStorage.setItem(SK, JSON.stringify(l));
 }
 function toDS(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return "".concat(d.getFullYear(), "-").concat(String(d.getMonth() + 1).padStart(2, '0'), "-").concat(String(d.getDate()).padStart(2, '0'));
 }
 function genId() {
   return 'e' + Math.random().toString(36).substr(2, 8);
@@ -177,9 +175,9 @@ function onDate(ev, s) {
 }
 function resizeImg(file, cb) {
   const r = new FileReader();
-  r.onload = e => {
+  r.onload = function (e) {
     const img = new Image();
-    img.onload = () => {
+    img.onload = function () {
       const M = 800,
         c = document.createElement('canvas');
       let w = img.width,
@@ -203,16 +201,18 @@ function resizeImg(file, cb) {
 function recurrenceLabel(ev) {
   if (!ev.recurrence || ev.recurrence === 'none') return null;
   const o = new Date((ev.startDate || ev.date) + 'T12:00:00');
-  if (ev.recurrence === 'weekly') return `毎週${WEEKDAYS[o.getDay()]}曜日`;
-  if (ev.recurrence === 'monthly') return `毎月${o.getDate()}日`;
-  if (ev.recurrence === 'yearly') return `毎年${o.getMonth() + 1}月${o.getDate()}日`;
+  if (ev.recurrence === 'weekly') return "\u6BCE\u9031".concat(WEEKDAYS[o.getDay()], "\u66DC\u65E5");
+  if (ev.recurrence === 'monthly') return "\u6BCE\u6708".concat(o.getDate(), "\u65E5");
+  if (ev.recurrence === 'yearly') return "\u6BCE\u5E74".concat(o.getMonth() + 1, "\u6708").concat(o.getDate(), "\u65E5");
 }
 function App() {
   const _useState = useState(loadEv),
     _useState2 = _slicedToArray(_useState, 2),
     events = _useState2[0],
     setEvents = _useState2[1];
-  const _useState3 = useState(() => new Date()),
+  const _useState3 = useState(function () {
+      return new Date();
+    }),
     _useState4 = _slicedToArray(_useState3, 2),
     sel = _useState4[0],
     setSel = _useState4[1];
@@ -241,33 +241,38 @@ function App() {
     setNotifPerm = _useState12[1];
   const notifTimers = useRef([]);
   // 通知許可リクエスト
-  useEffect(() => {
+  useEffect(function () {
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(p => setNotifPerm(p));
+      Notification.requestPermission().then(function (p) {
+        return setNotifPerm(p);
+      });
     } else if ('Notification' in window) {
       setNotifPerm(Notification.permission);
     }
   }, []);
 
   // 通知スケジューリング
-  useEffect(() => {
+  useEffect(function () {
     // 既存タイマーをクリア
-    notifTimers.current.forEach(t => clearTimeout(t));
+    notifTimers.current.forEach(function (t) {
+      return clearTimeout(t);
+    });
     notifTimers.current = [];
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     const now = new Date();
-    events.forEach(ev => {
+    events.forEach(function (ev) {
+      var _ev$notifMins;
       if (!ev.time || !ev.startDate) return;
-      const notifMins = ev.notifMins ?? 10; // デフォルト10分前
+      const notifMins = (_ev$notifMins = ev.notifMins) !== null && _ev$notifMins !== void 0 ? _ev$notifMins : 10; // デフォルト10分前
       if (notifMins < 0) return; // 通知なし
-      const evDate = new Date(`${ev.startDate}T${ev.time}:00`);
+      const evDate = new Date("".concat(ev.startDate, "T").concat(ev.time, ":00"));
       const notifTime = new Date(evDate.getTime() - notifMins * 60000);
       const ms = notifTime - now;
       if (ms > 0 && ms < 7 * 24 * 60 * 60 * 1000) {
         // 7日以内
-        const t = setTimeout(() => {
-          new Notification(`📅 ${ev.title}`, {
-            body: notifMins === 0 ? '予定の時間です' : `${notifMins}分後に始まります`,
+        const t = setTimeout(function () {
+          new Notification("\uD83D\uDCC5 ".concat(ev.title), {
+            body: notifMins === 0 ? '予定の時間です' : "".concat(notifMins, "\u5206\u5F8C\u306B\u59CB\u307E\u308A\u307E\u3059"),
             icon: '/favicon.ico'
           });
         }, ms);
@@ -275,7 +280,7 @@ function App() {
       }
     });
   }, [events, notifPerm]);
-  const changeViewMode = mode => {
+  const changeViewMode = function (mode) {
     setViewMode(mode);
     // スクロール位置とズームをリセット
     window.scrollTo(0, 0);
@@ -300,7 +305,7 @@ function App() {
   const tmr = useRef(null);
   const todayStr = toDS(new Date());
   const selStr = toDS(sel);
-  const _useState21 = useState(() => {
+  const _useState21 = useState(function () {
       const t = new Date();
       return addDays(weekSunday(new Date(t.getFullYear(), t.getMonth(), 1)), -BUFFER_WEEKS * 7);
     }),
@@ -319,12 +324,14 @@ function App() {
   const calVel = useRef(0);
   const rafId = useRef(null);
   const containerRef = useRef(null);
-  const showToast = useCallback(msg => {
+  const showToast = useCallback(function (msg) {
     setToast(msg);
     clearTimeout(tmr.current);
-    tmr.current = setTimeout(() => setToast(null), 2200);
+    tmr.current = setTimeout(function () {
+      return setToast(null);
+    }, 2200);
   }, []);
-  const addEv = useCallback(ev => {
+  const addEv = useCallback(function (ev) {
     const next = [...events, {
       ...ev,
       id: genId()
@@ -333,84 +340,100 @@ function App() {
     saveEv(next);
     showToast('追加しました');
   }, [events, showToast]);
-  const updateEv = useCallback((id, data) => {
-    const next = events.map(e => e.id === id ? {
-      ...e,
-      ...data
-    } : e);
+  const updateEv = useCallback(function (id, data) {
+    const next = events.map(function (e) {
+      return e.id === id ? {
+        ...e,
+        ...data
+      } : e;
+    });
     setEvents(next);
     saveEv(next);
     showToast('更新しました');
   }, [events, showToast]);
-  const delEv = useCallback(id => {
-    const next = events.filter(e => e.id !== id);
+  const delEv = useCallback(function (id) {
+    const next = events.filter(function (e) {
+      return e.id !== id;
+    });
     setEvents(next);
     saveEv(next);
     showToast('削除しました');
   }, [events, showToast]);
-  const addToReminder = ev => {
+  const addToReminder = function (ev) {
     if (!ev) return;
     const dt = ev.startDate + (ev.time ? 'T' + ev.time : '');
     const title = encodeURIComponent(ev.title);
     const notes = encodeURIComponent(ev.memo || '家族カレンダーより');
     // iOSリマインダーのURLスキーム
-    const url = `x-apple-reminderkit://REMCDReminder?title=${title}&notes=${notes}`;
+    const url = "x-apple-reminderkit://REMCDReminder?title=".concat(title, "&notes=").concat(notes);
     // フォールバック：カレンダーアプリに追加
-    const calUrl = `calshow:${new Date(dt).getTime() / 1000}`;
+    const calUrl = "calshow:".concat(new Date(dt).getTime() / 1000);
     window.location.href = url;
     setReminderEv(null);
   };
-  const moveEv = useCallback((id, newDate) => {
-    setEvents(prev => {
-      const ev = prev.find(e => e.id === id);
+  const moveEv = useCallback(function (id, newDate) {
+    setEvents(function (prev) {
+      const ev = prev.find(function (e) {
+        return e.id === id;
+      });
       if (!ev) return prev;
       const durDays = ev.endDate && ev.startDate ? Math.round((new Date(ev.endDate + 'T12:00:00') - new Date(ev.startDate + 'T12:00:00')) / 86400000) : 0;
       const newEnd = durDays > 0 ? toDS(addDays(new Date(newDate + 'T12:00:00'), durDays)) : newDate;
-      const next = prev.map(e => e.id === id ? {
-        ...e,
-        startDate: newDate,
-        endDate: newEnd,
-        date: newDate
-      } : e);
+      const next = prev.map(function (e) {
+        return e.id === id ? {
+          ...e,
+          startDate: newDate,
+          endDate: newEnd,
+          date: newDate
+        } : e;
+      });
       saveEv(next);
       return next;
     });
     showToast('移動しました ✓');
   }, [showToast]);
-  const snapAndRecycle = ty => {
+  const snapAndRecycle = function (ty) {
     const sn = Math.round(ty / WEEK_H) * WEEK_H;
     const tb = BUFFER_WEEKS + Math.round(sn / WEEK_H);
     if (tb < 3) {
-      setAnchorWeek(p => addDays(p, 28));
+      setAnchorWeek(function (p) {
+        return addDays(p, 28);
+      });
       return sn + 4 * WEEK_H;
     }
     if (tb > TOTAL_WEEKS - VISIBLE_WEEKS - 3) {
-      setAnchorWeek(p => addDays(p, -28));
+      setAnchorWeek(function (p) {
+        return addDays(p, -28);
+      });
       return sn - 4 * WEEK_H;
     }
     return sn;
   };
   const snapRef = useRef(snapAndRecycle);
   snapRef.current = snapAndRecycle;
-  const momentumFn = v0 => {
+  const momentumFn = function (v0) {
     let v = v0;
-    const step = () => {
+    const step = function () {
       if (Math.abs(v) < 0.5) {
-        setTranslateY(p => snapRef.current(p));
+        setTranslateY(function (p) {
+          return snapRef.current(p);
+        });
         return;
       }
       v *= 0.88;
-      setTranslateY(p => p + v);
+      setTranslateY(function (p) {
+        return p + v;
+      });
       rafId.current = requestAnimationFrame(step);
     };
     rafId.current = requestAnimationFrame(step);
   };
   const momentumRef = useRef(momentumFn);
   momentumRef.current = momentumFn;
-  const animateTo = (from, to) => {
+  const animateTo = function (from, to) {
     cancelAnimationFrame(rafId.current);
     let pos = from;
-    const step = () => {
+    const step = function () {
       const d = to - pos;
       if (Math.abs(d) < 0.8) {
         setTranslateY(snapRef.current(to));
@@ -433,7 +456,7 @@ function App() {
     setDailyKey,
     selStr
   };
-  useEffect(() => {
+  useEffect(function () {
     const el = containerRef.current;
     if (!el) return;
     let startX = 0,
@@ -444,7 +467,7 @@ function App() {
       lastT = 0,
       vel = 0,
       dragging = false;
-    const onTS = e => {
+    const onTS = function (e) {
       e.preventDefault();
       cancelAnimationFrame(rafId.current);
       dragging = true;
@@ -455,7 +478,7 @@ function App() {
       lastT = Date.now();
       vel = 0;
     };
-    const onTM = e => {
+    const onTM = function (e) {
       if (!dragging) return;
       e.preventDefault();
       const y = e.touches[0].clientY;
@@ -466,7 +489,7 @@ function App() {
       lastT = now;
       setTranslateY(startTY + (y - startY));
     };
-    const onTE = e => {
+    const onTE = function (e) {
       if (!dragging) return;
       e.preventDefault();
       dragging = false;
@@ -493,16 +516,22 @@ function App() {
           if (clickedStr === currentSelStr) {
             // 同じ日を2回タップ → デイリーへ
             svm('daily');
-            calStateRef.current.setDailyKey(k => k + 1);
+            calStateRef.current.setDailyKey(function (k) {
+              return k + 1;
+            });
           } else {
             // 初回タップ → 日付選択のみ
             ss(clicked);
           }
         }
-        setTranslateY(p => snap(p));
+        setTranslateY(function (p) {
+          return snap(p);
+        });
         return;
       }
-      Math.abs(vel) > 2 ? mom(vel) : setTranslateY(p => snap(p));
+      Math.abs(vel) > 2 ? mom(vel) : setTranslateY(function (p) {
+        return snap(p);
+      });
     };
     el.addEventListener('touchstart', onTS, {
       passive: false
@@ -513,7 +542,7 @@ function App() {
     el.addEventListener('touchend', onTE, {
       passive: false
     });
-    return () => {
+    return function () {
       el.removeEventListener('touchstart', onTS);
       el.removeEventListener('touchmove', onTM);
       el.removeEventListener('touchend', onTE);
@@ -524,7 +553,7 @@ function App() {
   const midWeek = addDays(addDays(anchorWeek, topWeekIndex * 7), 3 * 7);
   const dispYear = midWeek.getFullYear(),
     dispMonth = midWeek.getMonth();
-  const goToday = () => {
+  const goToday = function () {
     cancelAnimationFrame(rafId.current);
     const t = new Date();
     setAnchorWeek(addDays(weekSunday(new Date(t.getFullYear(), t.getMonth(), 1)), -BUFFER_WEEKS * 7));
@@ -532,8 +561,14 @@ function App() {
     setSel(t);
   };
   const allWeeks = [];
-  for (let i = 0; i < TOTAL_WEEKS; i++) allWeeks.push([0, 1, 2, 3, 4, 5, 6].map(d => addDays(addDays(anchorWeek, i * 7), d)));
-  const dayEvs = events.filter(e => onDate(e, selStr)).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+  for (let i = 0; i < TOTAL_WEEKS; i++) allWeeks.push([0, 1, 2, 3, 4, 5, 6].map(function (d) {
+    return addDays(addDays(anchorWeek, i * 7), d);
+  }));
+  const dayEvs = events.filter(function (e) {
+    return onDate(e, selStr);
+  }).sort(function (a, b) {
+    return (a.time || '99').localeCompare(b.time || '99');
+  });
   return /*#__PURE__*/React.createElement("div", {
     style: {
       fontFamily: '-apple-system,Hiragino Sans,sans-serif',
@@ -569,7 +604,9 @@ function App() {
       alignItems: 'center'
     }
   }, viewMode === 'daily' && /*#__PURE__*/React.createElement("button", {
-    onClick: () => changeViewMode('calendar'),
+    onClick: function () {
+      return changeViewMode('calendar');
+    },
     style: {
       background: '#f2f2ef',
       border: 'none',
@@ -581,7 +618,9 @@ function App() {
       fontWeight: 500
     }
   }, "\u2190 \u30AB\u30EC\u30F3\u30C0\u30FC"), viewMode !== 'daily' && /*#__PURE__*/React.createElement("button", {
-    onClick: () => changeViewMode(viewMode === 'calendar' ? 'list' : 'calendar'),
+    onClick: function () {
+      return changeViewMode(viewMode === 'calendar' ? 'list' : 'calendar');
+    },
     style: {
       background: viewMode === 'list' ? '#2d6a4f' : '#f2f2ef',
       border: 'none',
@@ -609,13 +648,15 @@ function App() {
     sel: sel,
     events: events,
     todayStr: todayStr,
-    onEdit: ev => {
+    onEdit: function (ev) {
       setEditEv(ev);
       setModal('edit');
     },
-    onMoveStart: ev => setMoveTarget(ev),
+    onMoveStart: function (ev) {
+      return setMoveTarget(ev);
+    },
     onDel: delEv,
-    onPhoto: (eid, i) => {
+    onPhoto: function (eid, i) {
       setPhState({
         eid,
         i
@@ -625,7 +666,7 @@ function App() {
   }) : viewMode === 'list' ? /*#__PURE__*/React.createElement(ListView, {
     events: events,
     todayStr: todayStr,
-    onEdit: ev => {
+    onEdit: function (ev) {
       setEditEv(ev);
       setModal('edit');
     }
@@ -638,7 +679,7 @@ function App() {
       justifyContent: 'space-between'
     }
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
+    onClick: function () {
       cancelAnimationFrame(rafId.current);
       const s = snapRef.current,
         ty = calStateRef.current.translateY;
@@ -659,7 +700,7 @@ function App() {
       fontWeight: 600
     }
   }, dispYear, "\u5E74", dispMonth + 1, "\u6708"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
+    onClick: function () {
       cancelAnimationFrame(rafId.current);
       const s = snapRef.current,
         ty = calStateRef.current.translateY;
@@ -685,14 +726,16 @@ function App() {
       width: '100%',
       boxSizing: 'border-box'
     }
-  }, WEEKDAYS.map((d, i) => /*#__PURE__*/React.createElement("span", {
-    key: d,
-    style: {
-      fontSize: 10,
-      fontWeight: 500,
-      color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : '#a8a8a4'
-    }
-  }, d))), /*#__PURE__*/React.createElement("div", {
+  }, WEEKDAYS.map(function (d, i) {
+    return /*#__PURE__*/React.createElement("span", {
+      key: d,
+      style: {
+        fontSize: 10,
+        fontWeight: 500,
+        color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : '#a8a8a4'
+      }
+    }, d);
+  })), /*#__PURE__*/React.createElement("div", {
     ref: containerRef,
     style: {
       background: '#fff',
@@ -705,28 +748,32 @@ function App() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      transform: `translateY(${translateY}px)`,
+      transform: "translateY(".concat(translateY, "px)"),
       willChange: 'transform'
     }
-  }, allWeeks.map((week, wi) => /*#__PURE__*/React.createElement(WeekRow, {
-    key: wi,
-    week: week,
-    selStr: selStr,
-    todayStr: todayStr,
-    events: events,
-    onSelect: setSel,
-    onEditEv: ev => {
-      setEditEv(ev);
-      setModal('edit');
-    },
-    dispMonth: dispMonth,
-    height: WEEK_H,
-    onGoDaily: d => {
-      setSel(d);
-      setViewMode('daily');
-      setDailyKey(k => k + 1);
-    }
-  })))), /*#__PURE__*/React.createElement("div", {
+  }, allWeeks.map(function (week, wi) {
+    return /*#__PURE__*/React.createElement(WeekRow, {
+      key: wi,
+      week: week,
+      selStr: selStr,
+      todayStr: todayStr,
+      events: events,
+      onSelect: setSel,
+      onEditEv: function (ev) {
+        setEditEv(ev);
+        setModal('edit');
+      },
+      dispMonth: dispMonth,
+      height: WEEK_H,
+      onGoDaily: function (d) {
+        setSel(d);
+        setViewMode('daily');
+        setDailyKey(function (k) {
+          return k + 1;
+        });
+      }
+    });
+  }))), /*#__PURE__*/React.createElement("div", {
     style: {
       background: '#fff',
       marginTop: 6,
@@ -749,7 +796,7 @@ function App() {
       letterSpacing: 0.5,
       textTransform: 'uppercase'
     }
-  }, selStr === todayStr ? `今日（${sel.getMonth() + 1}月${sel.getDate()}日）の予定` : `${sel.getMonth() + 1}月${sel.getDate()}日の予定`), getHoliday(selStr) && /*#__PURE__*/React.createElement("div", {
+  }, selStr === todayStr ? "\u4ECA\u65E5\uFF08".concat(sel.getMonth() + 1, "\u6708").concat(sel.getDate(), "\u65E5\uFF09\u306E\u4E88\u5B9A") : "".concat(sel.getMonth() + 1, "\u6708").concat(sel.getDate(), "\u65E5\u306E\u4E88\u5B9A")), getHoliday(selStr) && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#c0392b',
@@ -763,23 +810,27 @@ function App() {
       textAlign: 'center',
       padding: '20px 0'
     }
-  }, "\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093") : dayEvs.map(ev => /*#__PURE__*/React.createElement(EvCard, {
-    key: ev.id,
-    ev: ev,
-    onTap: () => {
-      setEditEv(ev);
-      setModal('edit');
-    },
-    onDel: delEv,
-    onPhoto: (eid, i) => {
-      setPhState({
-        eid,
-        i
-      });
-      setModal('photo');
-    },
-    onMoveStart: ev => setMoveTarget(ev)
-  })))), /*#__PURE__*/React.createElement("div", {
+  }, "\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093") : dayEvs.map(function (ev) {
+    return /*#__PURE__*/React.createElement(EvCard, {
+      key: ev.id,
+      ev: ev,
+      onTap: function () {
+        setEditEv(ev);
+        setModal('edit');
+      },
+      onDel: delEv,
+      onPhoto: function (eid, i) {
+        setPhState({
+          eid,
+          i
+        });
+        setModal('photo');
+      },
+      onMoveStart: function (ev) {
+        return setMoveTarget(ev);
+      }
+    });
+  }))), /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
       bottom: 24,
@@ -787,7 +838,9 @@ function App() {
       zIndex: 200
     }
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setModal('add'),
+    onClick: function () {
+      return setModal('add');
+    },
     style: {
       width: 50,
       height: 50,
@@ -803,7 +856,9 @@ function App() {
       boxShadow: '0 4px 16px rgba(45,106,79,.35)'
     }
   }, "\uFF0B")), reminderEv && /*#__PURE__*/React.createElement("div", {
-    onClick: () => setReminderEv(null),
+    onClick: function () {
+      return setReminderEv(null);
+    },
     style: {
       position: 'fixed',
       left: 0,
@@ -817,7 +872,9 @@ function App() {
       maxWidth: '100vw'
     }
   }, /*#__PURE__*/React.createElement("div", {
-    onClick: e => e.stopPropagation(),
+    onClick: function (e) {
+      return e.stopPropagation();
+    },
     style: {
       background: '#fff',
       borderRadius: '18px 18px 0 0',
@@ -852,7 +909,9 @@ function App() {
       gap: 8
     }
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setReminderEv(null),
+    onClick: function () {
+      return setReminderEv(null);
+    },
     style: {
       padding: 12,
       borderRadius: 8,
@@ -864,7 +923,9 @@ function App() {
       color: '#6b6b67'
     }
   }, "\u30B9\u30AD\u30C3\u30D7"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => addToReminder(reminderEv),
+    onClick: function () {
+      return addToReminder(reminderEv);
+    },
     style: {
       padding: 12,
       borderRadius: 8,
@@ -877,31 +938,35 @@ function App() {
     }
   }, "\u8FFD\u52A0\u3059\u308B")))), moveTarget && /*#__PURE__*/React.createElement(MoveModal, {
     ev: moveTarget,
-    onMove: newDate => {
+    onMove: function (newDate) {
       moveEv(moveTarget.id, newDate);
       setMoveTarget(null);
     },
-    onClose: () => setMoveTarget(null)
+    onClose: function () {
+      return setMoveTarget(null);
+    }
   }), modal === 'add' && /*#__PURE__*/React.createElement(EventModal, {
     sel: sel,
-    onSave: ev => {
+    onSave: function (ev) {
       addEv(ev);
       setModal(null);
     },
-    onClose: () => setModal(null)
+    onClose: function () {
+      return setModal(null);
+    }
   }), modal === 'edit' && editEv && /*#__PURE__*/React.createElement(EventModal, {
     sel: sel,
     initial: editEv,
-    onSave: data => {
+    onSave: function (data) {
       updateEv(editEv.id, data);
       setModal(null);
       setEditEv(null);
     },
-    onClose: () => {
+    onClose: function () {
       setModal(null);
       setEditEv(null);
     },
-    onDel: () => {
+    onDel: function () {
       delEv(editEv.id);
       setModal(null);
       setEditEv(null);
@@ -910,7 +975,9 @@ function App() {
     events: events,
     state: phState,
     setState: setPhState,
-    onClose: () => setModal(null)
+    onClose: function () {
+      return setModal(null);
+    }
   }), toast && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
@@ -940,27 +1007,31 @@ function WeekRow(_ref) {
     onGoDaily = _ref.onGoDaily;
   const ws = toDS(week[0]),
     we = toDS(week[6]);
-  const normalEvs = events.filter(ev => {
+  const normalEvs = events.filter(function (ev) {
     if (ev.recurrence && ev.recurrence !== 'none') return false;
     const a = ev.startDate || ev.date,
       b = ev.endDate || ev.date || a;
     return a <= we && b >= ws;
   });
-  const recurEvs = events.filter(ev => {
+  const recurEvs = events.filter(function (ev) {
     if (!ev.recurrence || ev.recurrence === 'none') return false;
-    return week.some(c => onDate(ev, toDS(c)));
+    return week.some(function (c) {
+      return onDate(ev, toDS(c));
+    });
   });
   const expanded = [];
-  recurEvs.forEach(ev => week.forEach(c => {
-    const ds2 = toDS(c);
-    if (onDate(ev, ds2)) expanded.push({
-      ...ev,
-      startDate: ds2,
-      endDate: ds2,
-      _recur: true
+  recurEvs.forEach(function (ev) {
+    return week.forEach(function (c) {
+      const ds2 = toDS(c);
+      if (onDate(ev, ds2)) expanded.push({
+        ...ev,
+        startDate: ds2,
+        endDate: ds2,
+        _recur: true
+      });
     });
-  }));
-  const allEvs = [...normalEvs, ...expanded].sort((a, b) => {
+  });
+  const allEvs = [...normalEvs, ...expanded].sort(function (a, b) {
     const as2 = a.startDate || a.date,
       bs2 = b.startDate || b.date,
       al = new Date(a.endDate || a.date || as2) - new Date(as2),
@@ -968,13 +1039,13 @@ function WeekRow(_ref) {
     return as2.localeCompare(bs2) || bl - al;
   });
   const lanes = [];
-  allEvs.forEach(ev => {
+  allEvs.forEach(function (ev) {
     const es = ev.startDate || ev.date,
       ee = ev.endDate || ev.date || es;
     let li = 0;
     for (;;) {
       if (!lanes[li]) lanes[li] = [];
-      if (!lanes[li].some(o => {
+      if (!lanes[li].some(function (o) {
         const os = o.startDate || o.date,
           oe = o.endDate || o.date || os;
         return es <= oe && ee >= os;
@@ -1002,7 +1073,7 @@ function WeekRow(_ref) {
       width: '100%',
       boxSizing: 'border-box'
     }
-  }, week.map((cell, idx) => {
+  }, week.map(function (cell, idx) {
     const d2 = toDS(cell),
       isT = d2 === todayStr,
       isSel = d2 === selStr,
@@ -1013,7 +1084,9 @@ function WeekRow(_ref) {
     return /*#__PURE__*/React.createElement("div", {
       key: idx,
       "data-date": d2,
-      onClick: () => onSelect(cell),
+      onClick: function () {
+        return onSelect(cell);
+      },
       style: {
         display: 'flex',
         flexDirection: 'column',
@@ -1058,15 +1131,17 @@ function WeekRow(_ref) {
       gap: 1,
       padding: '1px 4px 0'
     }
-  }, lanes.slice(0, 3).map((lane, li) => {
+  }, lanes.slice(0, 3).map(function (lane, li) {
     const used = new Set(),
       bars = [];
-    lane.slice().sort((a, b) => (a.startDate || a.date).localeCompare(b.startDate || b.date)).forEach(ev => {
+    lane.slice().sort(function (a, b) {
+      return (a.startDate || a.date).localeCompare(b.startDate || b.date);
+    }).forEach(function (ev) {
       const es = ev.startDate || ev.date,
         ee = ev.endDate || ev.date || es;
       let cs = -1,
         ce = -1;
-      week.forEach((c, i) => {
+      week.forEach(function (c, i) {
         const s2 = toDS(c);
         if (s2 >= es && s2 <= ee) {
           if (cs < 0) cs = i;
@@ -1081,7 +1156,7 @@ function WeekRow(_ref) {
       bars.push(/*#__PURE__*/React.createElement("div", {
         key: ev.id + es,
         "data-date": toDS(week[cs]),
-        onClick: e => {
+        onClick: function (e) {
           e.stopPropagation();
           if (onGoDaily) {
             onGoDaily(week[cs]);
@@ -1101,7 +1176,7 @@ function WeekRow(_ref) {
           cursor: 'pointer',
           alignSelf: 'center',
           background: ev.color || AC,
-          gridColumn: `${cs + 1}/${ce + 2}`,
+          gridColumn: "".concat(cs + 1, "/").concat(ce + 2),
           borderRadius: br,
           marginLeft: rL ? 1 : 0,
           marginRight: rR ? 1 : 0,
@@ -1110,7 +1185,7 @@ function WeekRow(_ref) {
         }
       }, rL || cs === 0 ? ev._recur ? '🔁 ' + ev.title : ev.title : ''));
     });
-    week.forEach((_, i) => {
+    week.forEach(function (_, i) {
       if (!used.has(i)) bars.push(/*#__PURE__*/React.createElement("div", {
         key: 'p' + li + i,
         style: {
@@ -1152,7 +1227,7 @@ function EvCard(_ref2) {
       borderRadius: 12,
       marginBottom: 7,
       background: '#f2f2ef',
-      borderLeft: `3px solid ${ev.color || AC}`,
+      borderLeft: "3px solid ".concat(ev.color || AC),
       cursor: 'pointer',
       transition: 'opacity 0.15s',
       userSelect: 'none',
@@ -1212,7 +1287,7 @@ function EvCard(_ref2) {
       alignItems: 'center'
     }
   }, (!ev.recurrence || ev.recurrence === 'none') && /*#__PURE__*/React.createElement("button", {
-    onClick: e => {
+    onClick: function (e) {
       e.stopPropagation();
       onMoveStart(ev);
     },
@@ -1227,7 +1302,7 @@ function EvCard(_ref2) {
       borderRadius: 6
     }
   }, "\u79FB\u52D5"), /*#__PURE__*/React.createElement("button", {
-    onClick: e => {
+    onClick: function (e) {
       e.stopPropagation();
       if (confirm('削除しますか？')) onDel(ev.id);
     },
@@ -1240,25 +1315,31 @@ function EvCard(_ref2) {
       padding: '0 2px'
     }
   }, "\u2715")))), photos.length > 0 && /*#__PURE__*/React.createElement("div", {
-    onClick: e => e.stopPropagation(),
+    onClick: function (e) {
+      return e.stopPropagation();
+    },
     style: {
       display: 'grid',
       gridTemplateColumns: photos.length === 1 ? '1fr' : 'repeat(3,1fr)',
       gap: 3,
       marginTop: 8
     }
-  }, photos.map((src, i) => /*#__PURE__*/React.createElement("img", {
-    key: i,
-    src: src,
-    onClick: () => onPhoto(ev.id, i),
-    style: {
-      width: '100%',
-      aspectRatio: photos.length === 1 ? '16/9' : '1',
-      objectFit: 'cover',
-      borderRadius: 6,
-      cursor: 'pointer'
-    }
-  }))));
+  }, photos.map(function (src, i) {
+    return /*#__PURE__*/React.createElement("img", {
+      key: i,
+      src: src,
+      onClick: function () {
+        return onPhoto(ev.id, i);
+      },
+      style: {
+        width: '100%',
+        aspectRatio: photos.length === 1 ? '16/9' : '1',
+        objectFit: 'cover',
+        borderRadius: 6,
+        cursor: 'pointer'
+      }
+    });
+  })));
 }
 
 // 追加・編集共通モーダル
@@ -1269,44 +1350,50 @@ function EventModal(_ref3) {
     onClose = _ref3.onClose,
     onDel = _ref3.onDel;
   const isEdit = !!initial;
-  const _useState25 = useState(initial?.title || ''),
+  const _useState25 = useState((initial === null || initial === void 0 ? void 0 : initial.title) || ''),
     _useState26 = _slicedToArray(_useState25, 2),
     title = _useState26[0],
     setTitle = _useState26[1];
-  const _useState27 = useState(initial?.startDate || initial?.date || toDS(sel)),
+  const _useState27 = useState((initial === null || initial === void 0 ? void 0 : initial.startDate) || (initial === null || initial === void 0 ? void 0 : initial.date) || toDS(sel)),
     _useState28 = _slicedToArray(_useState27, 2),
     start = _useState28[0],
     setStart = _useState28[1];
-  const _useState29 = useState(initial?.endDate || initial?.startDate || initial?.date || toDS(sel)),
+  const _useState29 = useState((initial === null || initial === void 0 ? void 0 : initial.endDate) || (initial === null || initial === void 0 ? void 0 : initial.startDate) || (initial === null || initial === void 0 ? void 0 : initial.date) || toDS(sel)),
     _useState30 = _slicedToArray(_useState29, 2),
     end = _useState30[0],
     setEnd = _useState30[1];
-  const _useState31 = useState(initial?.time || ''),
+  const _useState31 = useState((initial === null || initial === void 0 ? void 0 : initial.time) || ''),
     _useState32 = _slicedToArray(_useState31, 2),
     time = _useState32[0],
     setTime = _useState32[1];
-  const _useState33 = useState(initial?.memo || ''),
+  const _useState33 = useState((initial === null || initial === void 0 ? void 0 : initial.memo) || ''),
     _useState34 = _slicedToArray(_useState33, 2),
     memo = _useState34[0],
     setMemo = _useState34[1];
-  const _useState35 = useState(initial?.color || COLORS[0]),
+  const _useState35 = useState((initial === null || initial === void 0 ? void 0 : initial.color) || COLORS[0]),
     _useState36 = _slicedToArray(_useState35, 2),
     color = _useState36[0],
     setColor = _useState36[1];
-  const _useState37 = useState(initial?.photos || (initial?.photo ? [initial.photo] : [])),
+  const _useState37 = useState((initial === null || initial === void 0 ? void 0 : initial.photos) || (initial !== null && initial !== void 0 && initial.photo ? [initial.photo] : [])),
     _useState38 = _slicedToArray(_useState37, 2),
     photos = _useState38[0],
     setPhotos = _useState38[1];
-  const _useState39 = useState(initial?.recurrence || 'none'),
+  const _useState39 = useState((initial === null || initial === void 0 ? void 0 : initial.recurrence) || 'none'),
     _useState40 = _slicedToArray(_useState39, 2),
     recurrence = _useState40[0],
     setRecurrence = _useState40[1];
   const fileRef = useRef();
-  const handleFiles = e => {
-    Array.from(e.target.files || []).slice(0, 10 - photos.length).forEach(f => resizeImg(f, url => setPhotos(p => [...p, url])));
+  const handleFiles = function (e) {
+    Array.from(e.target.files || []).slice(0, 10 - photos.length).forEach(function (f) {
+      return resizeImg(f, function (url) {
+        return setPhotos(function (p) {
+          return [...p, url];
+        });
+      });
+    });
     e.target.value = '';
   };
-  const save = () => {
+  const save = function () {
     if (!title.trim()) {
       alert('タイトルを入力してください');
       return;
@@ -1324,11 +1411,11 @@ function EventModal(_ref3) {
       photo: photos[0] || null
     });
   };
-  const recurPreview = () => {
+  const recurPreview = function () {
     const d = new Date(start + 'T12:00:00');
-    if (recurrence === 'weekly') return `毎週${WEEKDAYS[d.getDay()]}曜日に繰り返し`;
-    if (recurrence === 'monthly') return `毎月${d.getDate()}日に繰り返し`;
-    if (recurrence === 'yearly') return `毎年${d.getMonth() + 1}月${d.getDate()}日に繰り返し`;
+    if (recurrence === 'weekly') return "\u6BCE\u9031".concat(WEEKDAYS[d.getDay()], "\u66DC\u65E5\u306B\u7E70\u308A\u8FD4\u3057");
+    if (recurrence === 'monthly') return "\u6BCE\u6708".concat(d.getDate(), "\u65E5\u306B\u7E70\u308A\u8FD4\u3057");
+    if (recurrence === 'yearly') return "\u6BCE\u5E74".concat(d.getMonth() + 1, "\u6708").concat(d.getDate(), "\u65E5\u306B\u7E70\u308A\u8FD4\u3057");
   };
   const inp = {
     width: '100%',
@@ -1367,7 +1454,9 @@ function EventModal(_ref3) {
       maxWidth: '100vw'
     }
   }, /*#__PURE__*/React.createElement("div", {
-    onClick: e => e.stopPropagation(),
+    onClick: function (e) {
+      return e.stopPropagation();
+    },
     style: {
       background: '#fff',
       borderRadius: '18px 18px 0 0',
@@ -1398,7 +1487,9 @@ function EventModal(_ref3) {
   }, "\u30BF\u30A4\u30C8\u30EB"), /*#__PURE__*/React.createElement("input", {
     autoFocus: true,
     value: title,
-    onChange: e => setTitle(e.target.value),
+    onChange: function (e) {
+      return setTitle(e.target.value);
+    },
     placeholder: "\u4F8B\uFF1A\u65C5\u884C\u3001\u8A95\u751F\u65E5...",
     style: inp
   }), /*#__PURE__*/React.createElement("label", {
@@ -1406,7 +1497,9 @@ function EventModal(_ref3) {
   }, recurrence !== 'none' ? '開始日' : '期間'), recurrence !== 'none' ? /*#__PURE__*/React.createElement("input", {
     type: "date",
     value: start,
-    onChange: e => setStart(e.target.value),
+    onChange: function (e) {
+      return setStart(e.target.value);
+    },
     style: inp
   }) : /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1425,7 +1518,7 @@ function EventModal(_ref3) {
   }, "\u958B\u59CB\u65E5"), /*#__PURE__*/React.createElement("input", {
     type: "date",
     value: start,
-    onChange: e => {
+    onChange: function (e) {
       setStart(e.target.value);
       if (!end || end < e.target.value) setEnd(e.target.value);
     },
@@ -1443,7 +1536,9 @@ function EventModal(_ref3) {
   }, "\u7D42\u4E86\u65E5"), /*#__PURE__*/React.createElement("input", {
     type: "date",
     value: end,
-    onChange: e => setEnd(e.target.value),
+    onChange: function (e) {
+      return setEnd(e.target.value);
+    },
     style: {
       ...inp,
       marginBottom: 0
@@ -1453,7 +1548,9 @@ function EventModal(_ref3) {
   }, "\u6642\u9593\uFF08\u4EFB\u610F\uFF09"), /*#__PURE__*/React.createElement("input", {
     type: "time",
     value: time,
-    onChange: e => setTime(e.target.value),
+    onChange: function (e) {
+      return setTime(e.target.value);
+    },
     style: inp
   }), time && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
     style: lbl
@@ -1464,19 +1561,21 @@ function EventModal(_ref3) {
       gap: 4,
       marginBottom: 8
     }
-  }, [[-1, 'なし'], [0, '当日'], [10, '10分前'], [30, '30分前']].map(_ref4 => {
+  }, [[-1, 'なし'], [0, '当日'], [10, '10分前'], [30, '30分前']].map(function (_ref4) {
     let _ref5 = _slicedToArray(_ref4, 2),
       val = _ref5[0],
       lbl2 = _ref5[1];
     return /*#__PURE__*/React.createElement("button", {
       key: val,
-      onClick: () => setNotifMins(val),
+      onClick: function () {
+        return setNotifMins(val);
+      },
       style: {
         padding: '6px 4px',
         borderRadius: 8,
         fontSize: 11,
         fontWeight: 500,
-        border: `1.5px solid ${notifMins === val ? AC : '#e8e8e4'}`,
+        border: "1.5px solid ".concat(notifMins === val ? AC : '#e8e8e4'),
         background: notifMins === val ? ACL : '#fff',
         color: notifMins === val ? AC : '#6b6b67',
         cursor: 'pointer'
@@ -1491,19 +1590,21 @@ function EventModal(_ref3) {
       gap: 4,
       marginBottom: 8
     }
-  }, Object.entries(RECURRENCE_LABELS).map(_ref6 => {
+  }, Object.entries(RECURRENCE_LABELS).map(function (_ref6) {
     let _ref7 = _slicedToArray(_ref6, 2),
       val = _ref7[0],
       l2 = _ref7[1];
     return /*#__PURE__*/React.createElement("button", {
       key: val,
-      onClick: () => setRecurrence(val),
+      onClick: function () {
+        return setRecurrence(val);
+      },
       style: {
         padding: '6px 4px',
         borderRadius: 8,
         fontSize: 11,
         fontWeight: 500,
-        border: `1.5px solid ${recurrence === val ? AC : '#e8e8e4'}`,
+        border: "1.5px solid ".concat(recurrence === val ? AC : '#e8e8e4'),
         background: recurrence === val ? ACL : '#fff',
         color: recurrence === val ? AC : '#6b6b67',
         cursor: 'pointer'
@@ -1522,7 +1623,9 @@ function EventModal(_ref3) {
     style: lbl
   }, "\u30E1\u30E2\uFF08\u4EFB\u610F\uFF09"), /*#__PURE__*/React.createElement("textarea", {
     value: memo,
-    onChange: e => setMemo(e.target.value),
+    onChange: function (e) {
+      return setMemo(e.target.value);
+    },
     placeholder: "\u30E1\u30E2...",
     style: {
       ...inp,
@@ -1537,18 +1640,22 @@ function EventModal(_ref3) {
       gap: 8,
       marginBottom: 8
     }
-  }, COLORS.map(c => /*#__PURE__*/React.createElement("div", {
-    key: c,
-    onClick: () => setColor(c),
-    style: {
-      width: 24,
-      height: 24,
-      borderRadius: '50%',
-      background: c,
-      cursor: 'pointer',
-      border: color === c ? '2.5px solid #1a1a18' : '2.5px solid transparent'
-    }
-  }))), /*#__PURE__*/React.createElement("label", {
+  }, COLORS.map(function (c) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: c,
+      onClick: function () {
+        return setColor(c);
+      },
+      style: {
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        background: c,
+        cursor: 'pointer',
+        border: color === c ? '2.5px solid #1a1a18' : '2.5px solid transparent'
+      }
+    });
+  })), /*#__PURE__*/React.createElement("label", {
     style: lbl
   }, "\u5199\u771F\uFF08\u6700\u592710\u679A\uFF09"), photos.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1557,41 +1664,52 @@ function EventModal(_ref3) {
       gap: 5,
       marginBottom: 10
     }
-  }, photos.map((url, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    style: {
-      position: 'relative',
-      aspectRatio: '1',
-      borderRadius: 8,
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("img", {
-    src: url,
-    style: {
-      width: '100%',
-      height: '100%',
-      objectFit: 'cover'
-    }
-  }), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setPhotos(p => p.filter((_, j) => j !== i)),
-    style: {
-      position: 'absolute',
-      top: 3,
-      right: 3,
-      width: 18,
-      height: 18,
-      borderRadius: '50%',
-      background: 'rgba(0,0,0,.55)',
-      color: '#fff',
-      border: 'none',
-      fontSize: 11,
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }
-  }, "\u2715")))), photos.length < 10 && /*#__PURE__*/React.createElement("div", {
-    onClick: () => fileRef.current?.click(),
+  }, photos.map(function (url, i) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        position: 'relative',
+        aspectRatio: '1',
+        borderRadius: 8,
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement("img", {
+      src: url,
+      style: {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover'
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: function () {
+        return setPhotos(function (p) {
+          return p.filter(function (_, j) {
+            return j !== i;
+          });
+        });
+      },
+      style: {
+        position: 'absolute',
+        top: 3,
+        right: 3,
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        background: 'rgba(0,0,0,.55)',
+        color: '#fff',
+        border: 'none',
+        fontSize: 11,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }
+    }, "\u2715"));
+  })), photos.length < 10 && /*#__PURE__*/React.createElement("div", {
+    onClick: function () {
+      var _fileRef$current;
+      return (_fileRef$current = fileRef.current) === null || _fileRef$current === void 0 ? void 0 : _fileRef$current.click();
+    },
     style: {
       border: '1.5px dashed #e8e8e4',
       borderRadius: 8,
@@ -1631,7 +1749,7 @@ function EventModal(_ref3) {
       color: '#6b6b67'
     }
   }, "\u30AD\u30E3\u30F3\u30BB\u30EB"), isEdit && /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
+    onClick: function () {
       if (confirm('削除しますか？')) onDel();
     },
     style: {
@@ -1673,7 +1791,11 @@ function DailyView(_ref8) {
   const holiday = getHoliday(selStr);
   const wday = weekdays[d.getDay()];
   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-  const dayEvs = events.filter(e => onDate(e, selStr)).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  const dayEvs = events.filter(function (e) {
+    return onDate(e, selStr);
+  }).sort(function (a, b) {
+    return (a.time || '99:99').localeCompare(b.time || '99:99');
+  });
   return /*#__PURE__*/React.createElement("div", {
     style: {
       background: '#f7f7f5',
@@ -1747,7 +1869,7 @@ function DailyView(_ref8) {
     style: {
       marginTop: 8
     }
-  }, dayEvs.map(ev => {
+  }, dayEvs.map(function (ev) {
     const recurLbl = recurrenceLabel(ev);
     const photos = ev.photos || (ev.photo ? [ev.photo] : []);
     const canMove = !ev.recurrence || ev.recurrence === 'none';
@@ -1756,10 +1878,12 @@ function DailyView(_ref8) {
       style: {
         background: '#fff',
         marginBottom: 1,
-        borderLeft: `4px solid ${ev.color || '#2d6a4f'}`
+        borderLeft: "4px solid ".concat(ev.color || '#2d6a4f')
       }
     }, /*#__PURE__*/React.createElement("div", {
-      onClick: () => onEdit(ev),
+      onClick: function () {
+        return onEdit(ev);
+      },
       style: {
         padding: '14px 16px',
         cursor: 'pointer'
@@ -1806,7 +1930,7 @@ function DailyView(_ref8) {
         marginLeft: 8
       }
     }, canMove && /*#__PURE__*/React.createElement("button", {
-      onClick: e => {
+      onClick: function (e) {
         e.stopPropagation();
         onMoveStart(ev);
       },
@@ -1821,7 +1945,7 @@ function DailyView(_ref8) {
         borderRadius: 6
       }
     }, "\u79FB\u52D5"), /*#__PURE__*/React.createElement("button", {
-      onClick: e => {
+      onClick: function (e) {
         e.stopPropagation();
         if (confirm('削除しますか？')) onDel(ev.id);
       },
@@ -1840,21 +1964,23 @@ function DailyView(_ref8) {
         gap: 4,
         marginTop: 10
       }
-    }, photos.map((src, i) => /*#__PURE__*/React.createElement("img", {
-      key: i,
-      src: src,
-      onClick: e => {
-        e.stopPropagation();
-        onPhoto(ev.id, i);
-      },
-      style: {
-        width: '100%',
-        aspectRatio: photos.length === 1 ? '16/9' : '1',
-        objectFit: 'cover',
-        borderRadius: 6,
-        cursor: 'pointer'
-      }
-    })))));
+    }, photos.map(function (src, i) {
+      return /*#__PURE__*/React.createElement("img", {
+        key: i,
+        src: src,
+        onClick: function (e) {
+          e.stopPropagation();
+          onPhoto(ev.id, i);
+        },
+        style: {
+          width: '100%',
+          aspectRatio: photos.length === 1 ? '16/9' : '1',
+          objectFit: 'cover',
+          borderRadius: 6,
+          cursor: 'pointer'
+        }
+      });
+    }))));
   })));
 }
 function ListView(_ref9) {
@@ -1862,10 +1988,10 @@ function ListView(_ref9) {
     todayStr = _ref9.todayStr,
     onEdit = _ref9.onEdit;
   // 今日以降の予定を日付順に並べる
-  const sorted = [...events].filter(ev => {
+  const sorted = [...events].filter(function (ev) {
     const d = ev.startDate || ev.date;
     return d >= todayStr;
-  }).sort((a, b) => {
+  }).sort(function (a, b) {
     const da = a.startDate || a.date;
     const db = b.startDate || b.date;
     if (da !== db) return da.localeCompare(db);
@@ -1874,7 +2000,7 @@ function ListView(_ref9) {
 
   // 日付ごとにグループ化
   const grouped = {};
-  sorted.forEach(ev => {
+  sorted.forEach(function (ev) {
     const d = ev.startDate || ev.date;
     if (!grouped[d]) grouped[d] = [];
     grouped[d].push(ev);
@@ -1882,7 +2008,9 @@ function ListView(_ref9) {
 
   // 繰り返し予定を今後30日分展開
   const today = new Date(todayStr + 'T12:00:00');
-  events.filter(ev => ev.recurrence && ev.recurrence !== 'none').forEach(ev => {
+  events.filter(function (ev) {
+    return ev.recurrence && ev.recurrence !== 'none';
+  }).forEach(function (ev) {
     for (let i = 0; i <= 30; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
@@ -1890,7 +2018,9 @@ function ListView(_ref9) {
       if (ds < (ev.startDate || ev.date)) continue;
       if (matchesRecurrence(ev, ds)) {
         if (!grouped[ds]) grouped[ds] = [];
-        if (!grouped[ds].find(e => e.id === ev.id)) {
+        if (!grouped[ds].find(function (e) {
+          return e.id === ev.id;
+        })) {
           grouped[ds].push({
             ...ev,
             _displayDate: ds
@@ -1900,14 +2030,14 @@ function ListView(_ref9) {
     }
   });
   const days = Object.keys(grouped).sort();
-  const fmtDay = ds => {
+  const fmtDay = function (ds) {
     const d = new Date(ds + 'T12:00:00');
     const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
     const m = d.getMonth() + 1,
       day = d.getDate(),
       w = weekdays[d.getDay()];
     const isToday = ds === todayStr;
-    return `${m}月${day}日（${w}）${isToday ? ' 今日' : ''}`;
+    return "".concat(m, "\u6708").concat(day, "\u65E5\uFF08").concat(w, "\uFF09").concat(isToday ? ' 今日' : '');
   };
   if (days.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
@@ -1927,75 +2057,79 @@ function ListView(_ref9) {
       minHeight: '60vh',
       paddingBottom: 90
     }
-  }, days.map(ds => /*#__PURE__*/React.createElement("div", {
-    key: ds
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: '14px 16px 6px',
-      background: '#f7f7f5'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13,
-      fontWeight: 600,
-      color: ds === todayStr ? '#2d6a4f' : '#6b6b67'
-    }
-  }, fmtDay(ds))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#fff',
-      borderTop: '1px solid #e8e8e4',
-      borderBottom: '1px solid #e8e8e4'
-    }
-  }, grouped[ds].map((ev, idx) => {
-    const recurLbl = recurrenceLabel(ev);
+  }, days.map(function (ds) {
     return /*#__PURE__*/React.createElement("div", {
-      key: ev.id + ds,
-      onClick: () => onEdit(ev),
-      style: {
-        display: 'flex',
-        alignItems: 'stretch',
-        padding: '12px 16px',
-        borderBottom: idx < grouped[ds].length - 1 ? '1px solid #f2f2ef' : 'none',
-        cursor: 'pointer',
-        gap: 12
-      }
+      key: ds
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        width: 3,
-        borderRadius: 2,
-        background: ev.color || '#2d6a4f',
-        flexShrink: 0
+        padding: '14px 16px 6px',
+        background: '#f7f7f5'
       }
-    }), /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", {
       style: {
-        flex: 1
+        fontSize: 13,
+        fontWeight: 600,
+        color: ds === todayStr ? '#2d6a4f' : '#6b6b67'
       }
-    }, /*#__PURE__*/React.createElement("div", {
+    }, fmtDay(ds))), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 15,
-        fontWeight: 500,
-        color: '#1a1a18'
+        background: '#fff',
+        borderTop: '1px solid #e8e8e4',
+        borderBottom: '1px solid #e8e8e4'
       }
-    }, ev.title), ev.time && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: '#6b6b67',
-        marginTop: 2
-      }
-    }, ev.time), recurLbl && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        color: '#a8a8a4',
-        marginTop: 2
-      }
-    }, "\uD83D\uDD01 ", recurLbl), ev.memo && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: '#a8a8a4',
-        marginTop: 2
-      }
-    }, ev.memo)));
-  })))));
+    }, grouped[ds].map(function (ev, idx) {
+      const recurLbl = recurrenceLabel(ev);
+      return /*#__PURE__*/React.createElement("div", {
+        key: ev.id + ds,
+        onClick: function () {
+          return onEdit(ev);
+        },
+        style: {
+          display: 'flex',
+          alignItems: 'stretch',
+          padding: '12px 16px',
+          borderBottom: idx < grouped[ds].length - 1 ? '1px solid #f2f2ef' : 'none',
+          cursor: 'pointer',
+          gap: 12
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 3,
+          borderRadius: 2,
+          background: ev.color || '#2d6a4f',
+          flexShrink: 0
+        }
+      }), /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 15,
+          fontWeight: 500,
+          color: '#1a1a18'
+        }
+      }, ev.title), ev.time && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: '#6b6b67',
+          marginTop: 2
+        }
+      }, ev.time), recurLbl && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: '#a8a8a4',
+          marginTop: 2
+        }
+      }, "\uD83D\uDD01 ", recurLbl), ev.memo && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: '#a8a8a4',
+          marginTop: 2
+        }
+      }, ev.memo)));
+    })));
+  }));
 }
 function MoveModal(_ref0) {
   let ev = _ref0.ev,
@@ -2020,7 +2154,9 @@ function MoveModal(_ref0) {
       maxWidth: '100vw'
     }
   }, /*#__PURE__*/React.createElement("div", {
-    onClick: e => e.stopPropagation(),
+    onClick: function (e) {
+      return e.stopPropagation();
+    },
     style: {
       background: '#fff',
       borderRadius: '18px 18px 0 0',
@@ -2064,7 +2200,9 @@ function MoveModal(_ref0) {
   }, "\u79FB\u52D5\u5148\u306E\u65E5\u4ED8"), /*#__PURE__*/React.createElement("input", {
     type: "date",
     value: newDate,
-    onChange: e => setNewDate(e.target.value),
+    onChange: function (e) {
+      return setNewDate(e.target.value);
+    },
     style: {
       width: '100%',
       padding: '12px 14px',
@@ -2096,7 +2234,9 @@ function MoveModal(_ref0) {
       color: '#6b6b67'
     }
   }, "\u30AD\u30E3\u30F3\u30BB\u30EB"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => onMove(newDate),
+    onClick: function () {
+      return onMove(newDate);
+    },
     style: {
       padding: 13,
       borderRadius: 8,
@@ -2114,14 +2254,18 @@ function PhModal(_ref1) {
     state = _ref1.state,
     setState = _ref1.setState,
     onClose = _ref1.onClose;
-  const ev = events.find(e => e.id === state.eid);
+  const ev = events.find(function (e) {
+    return e.id === state.eid;
+  });
   const photos = ev ? ev.photos || (ev.photo ? [ev.photo] : []) : [];
   if (!photos.length) return null;
-  const nav = d => {
-    setState(p => ({
-      ...p,
-      i: (p.i + d + photos.length) % photos.length
-    }));
+  const nav = function (d) {
+    setState(function (p) {
+      return {
+        ...p,
+        i: (p.i + d + photos.length) % photos.length
+      };
+    });
   };
   return /*#__PURE__*/React.createElement("div", {
     onClick: onClose,
@@ -2139,7 +2283,7 @@ function PhModal(_ref1) {
       cursor: 'pointer'
     }
   }, photos.length > 1 && /*#__PURE__*/React.createElement("button", {
-    onClick: e => {
+    onClick: function (e) {
       e.stopPropagation();
       nav(-1);
     },
@@ -2164,7 +2308,7 @@ function PhModal(_ref1) {
       borderRadius: 8
     }
   }), photos.length > 1 && /*#__PURE__*/React.createElement("button", {
-    onClick: e => {
+    onClick: function (e) {
       e.stopPropagation();
       nav(1);
     },
@@ -2195,7 +2339,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(
 </script>
 <script>
 if('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(e => console.log('SW:', e));
+  navigator.serviceWorker.register('sw.js').catch(function(e) { console.log('SW:', e); });
 }
 </script>
 </body>
