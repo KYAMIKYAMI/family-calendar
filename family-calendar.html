@@ -9,7 +9,6 @@
 <title>家族カレンダー</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { background: #f7f7f5; }
@@ -17,146 +16,241 @@ body { background: #f7f7f5; }
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script>
 const { useState, useRef, useCallback, useEffect } = React;
-
-
-
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t.return && (u = t.return(), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 // 日本の祝日データ（固定祝日 + ハッピーマンデー計算）
 function getJapaneseHolidays(year) {
   const holidays = {};
-  const add = (m, d, name) => { holidays[`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`] = name; };
+  const add = (m, d, name) => {
+    holidays[`${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`] = name;
+  };
 
   // 固定祝日
-  add(1,1,'元日');
-  add(2,11,'建国記念の日');
-  add(2,23,'天皇誕生日');
-  add(4,29,'昭和の日');
-  add(5,3,'憲法記念日');
-  add(5,4,'みどりの日');
-  add(5,5,'こどもの日');
-  add(8,11,'山の日');
-  add(11,3,'文化の日');
-  add(11,23,'勤労感謝の日');
+  add(1, 1, '元日');
+  add(2, 11, '建国記念の日');
+  add(2, 23, '天皇誕生日');
+  add(4, 29, '昭和の日');
+  add(5, 3, '憲法記念日');
+  add(5, 4, 'みどりの日');
+  add(5, 5, 'こどもの日');
+  add(8, 11, '山の日');
+  add(11, 3, '文化の日');
+  add(11, 23, '勤労感謝の日');
 
   // ハッピーマンデー
   const nthMonday = (m, n) => {
-    let d = new Date(year, m-1, 1);
+    let d = new Date(year, m - 1, 1);
     let count = 0;
-    while(true) { if(d.getDay()===1) { count++; if(count===n) return d.getDate(); } d.setDate(d.getDate()+1); }
+    while (true) {
+      if (d.getDay() === 1) {
+        count++;
+        if (count === n) return d.getDate();
+      }
+      d.setDate(d.getDate() + 1);
+    }
   };
-  add(1, nthMonday(1,2), '成人の日');
-  add(7, nthMonday(7,3), '海の日');
-  add(9, nthMonday(9,3), '敬老の日');
-  add(10, nthMonday(10,2), 'スポーツの日');
+  add(1, nthMonday(1, 2), '成人の日');
+  add(7, nthMonday(7, 3), '海の日');
+  add(9, nthMonday(9, 3), '敬老の日');
+  add(10, nthMonday(10, 2), 'スポーツの日');
 
   // 春分の日（簡易計算）
-  const shunbun = Math.floor(20.8431 + 0.242194*(year-1980) - Math.floor((year-1980)/4));
+  const shunbun = Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
   add(3, shunbun, '春分の日');
 
   // 秋分の日（簡易計算）
-  const shubun = Math.floor(23.2488 + 0.242194*(year-1980) - Math.floor((year-1980)/4));
+  const shubun = Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
   add(9, shubun, '秋分の日');
 
   // 振替休日の計算
   const keys = Object.keys(holidays).sort();
   keys.forEach(key => {
-    const d = new Date(key+'T12:00:00');
-    if(d.getDay()===0) { // 日曜なら翌日が振替
-      const next = new Date(d); next.setDate(next.getDate()+1);
-      const nextKey = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
-      if(!holidays[nextKey]) holidays[nextKey] = '振替休日';
+    const d = new Date(key + 'T12:00:00');
+    if (d.getDay() === 0) {
+      // 日曜なら翌日が振替
+      const next = new Date(d);
+      next.setDate(next.getDate() + 1);
+      const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+      if (!holidays[nextKey]) holidays[nextKey] = '振替休日';
     }
   });
 
   // 国民の休日（祝日に挟まれた平日）
   const allKeys = Object.keys(holidays).sort();
   allKeys.forEach(key => {
-    const d = new Date(key+'T12:00:00');
-    const prev = new Date(d); prev.setDate(prev.getDate()-1);
-    const next2 = new Date(d); next2.setDate(next2.getDate()+1);
-    const fmt = x => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
-    if(holidays[fmt(prev)] && holidays[fmt(next2)] && !holidays[key]) {
-      if(d.getDay()!==0) holidays[key] = '国民の休日';
+    const d = new Date(key + 'T12:00:00');
+    const prev = new Date(d);
+    prev.setDate(prev.getDate() - 1);
+    const next2 = new Date(d);
+    next2.setDate(next2.getDate() + 1);
+    const fmt = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    if (holidays[fmt(prev)] && holidays[fmt(next2)] && !holidays[key]) {
+      if (d.getDay() !== 0) holidays[key] = '国民の休日';
     }
   });
-
   return holidays;
 }
 
 // 祝日キャッシュ
 const holidayCache = {};
 function getHoliday(dateStr) {
-  const year = parseInt(dateStr.slice(0,4));
-  if(!holidayCache[year]) holidayCache[year] = getJapaneseHolidays(year);
+  const year = parseInt(dateStr.slice(0, 4));
+  if (!holidayCache[year]) holidayCache[year] = getJapaneseHolidays(year);
   return holidayCache[year][dateStr] || null;
 }
-
-const COLORS = ['#2d6a4f','#e67e22','#2980b9','#c0392b','#8e44ad'];
+const COLORS = ['#2d6a4f', '#e67e22', '#2980b9', '#c0392b', '#8e44ad'];
 const SK = 'fc_ev1';
 const AC = '#2d6a4f';
 const ACL = '#e8f4ee';
-const WEEKDAYS = ['日','月','火','水','木','金','土'];
-const RECURRENCE_LABELS = { none:'なし', weekly:'毎週', monthly:'毎月', yearly:'毎年' };
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+const RECURRENCE_LABELS = {
+  none: 'なし',
+  weekly: '毎週',
+  monthly: '毎月',
+  yearly: '毎年'
+};
 const WEEK_H = 62;
 const VISIBLE_WEEKS = 6;
 const BUFFER_WEEKS = 6;
 const TOTAL_WEEKS = VISIBLE_WEEKS + BUFFER_WEEKS * 2;
-
-function loadEv() { try { return JSON.parse(localStorage.getItem(SK)||'[]'); } catch { return []; } }
-function saveEv(l) { localStorage.setItem(SK, JSON.stringify(l)); }
-function toDS(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function genId() { return 'e'+Math.random().toString(36).substr(2,8); }
-function addDays(d, n) { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
-function weekSunday(d) { const r=new Date(d); r.setDate(r.getDate()-r.getDay()); r.setHours(0,0,0,0); return r; }
+function loadEv() {
+  try {
+    return JSON.parse(localStorage.getItem(SK) || '[]');
+  } catch {
+    return [];
+  }
+}
+function saveEv(l) {
+  localStorage.setItem(SK, JSON.stringify(l));
+}
+function toDS(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function genId() {
+  return 'e' + Math.random().toString(36).substr(2, 8);
+}
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+function weekSunday(d) {
+  const r = new Date(d);
+  r.setDate(r.getDate() - r.getDay());
+  r.setHours(0, 0, 0, 0);
+  return r;
+}
 function matchesRecurrence(ev, s) {
-  const d=new Date(s+'T12:00:00'), o=new Date((ev.startDate||ev.date)+'T12:00:00');
-  if(ev.recurrence==='weekly') return d.getDay()===o.getDay();
-  if(ev.recurrence==='monthly') return d.getDate()===o.getDate();
-  if(ev.recurrence==='yearly') return d.getMonth()===o.getMonth()&&d.getDate()===o.getDate();
+  const d = new Date(s + 'T12:00:00'),
+    o = new Date((ev.startDate || ev.date) + 'T12:00:00');
+  if (ev.recurrence === 'weekly') return d.getDay() === o.getDay();
+  if (ev.recurrence === 'monthly') return d.getDate() === o.getDate();
+  if (ev.recurrence === 'yearly') return d.getMonth() === o.getMonth() && d.getDate() === o.getDate();
   return false;
 }
 function onDate(ev, s) {
-  const start=ev.startDate||ev.date;
-  if(ev.recurrence&&ev.recurrence!=='none') return s>=start&&matchesRecurrence(ev,s);
-  return start<=s&&s<=(ev.endDate||ev.date||start);
+  const start = ev.startDate || ev.date;
+  if (ev.recurrence && ev.recurrence !== 'none') return s >= start && matchesRecurrence(ev, s);
+  return start <= s && s <= (ev.endDate || ev.date || start);
 }
 function resizeImg(file, cb) {
-  const r=new FileReader(); r.onload=e=>{ const img=new Image(); img.onload=()=>{ const M=800,c=document.createElement('canvas'); let w=img.width,h=img.height; if(w>h&&w>M){h=h*M/w;w=M;}else if(h>M){w=w*M/h;h=M;} c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',.7));}; img.src=e.target.result;}; r.readAsDataURL(file);
+  const r = new FileReader();
+  r.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const M = 800,
+        c = document.createElement('canvas');
+      let w = img.width,
+        h = img.height;
+      if (w > h && w > M) {
+        h = h * M / w;
+        w = M;
+      } else if (h > M) {
+        w = w * M / h;
+        h = M;
+      }
+      c.width = w;
+      c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(c.toDataURL('image/jpeg', .7));
+    };
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(file);
 }
 function recurrenceLabel(ev) {
-  if(!ev.recurrence||ev.recurrence==='none') return null;
-  const o=new Date((ev.startDate||ev.date)+'T12:00:00');
-  if(ev.recurrence==='weekly') return `毎週${WEEKDAYS[o.getDay()]}曜日`;
-  if(ev.recurrence==='monthly') return `毎月${o.getDate()}日`;
-  if(ev.recurrence==='yearly') return `毎年${o.getMonth()+1}月${o.getDate()}日`;
+  if (!ev.recurrence || ev.recurrence === 'none') return null;
+  const o = new Date((ev.startDate || ev.date) + 'T12:00:00');
+  if (ev.recurrence === 'weekly') return `毎週${WEEKDAYS[o.getDay()]}曜日`;
+  if (ev.recurrence === 'monthly') return `毎月${o.getDate()}日`;
+  if (ev.recurrence === 'yearly') return `毎年${o.getMonth() + 1}月${o.getDate()}日`;
 }
-
 function App() {
-  const [events, setEvents] = useState(loadEv);
-  const [sel, setSel] = useState(() => new Date());
-  const [modal, setModal] = useState(null); // 'add' | 'edit'
-  const [editEv, setEditEv] = useState(null);
-  const [phState, setPhState] = useState({eid:null,i:0});
-  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' | 'list'
-  const changeViewMode = (mode) => {
+  const _useState = useState(loadEv),
+    _useState2 = _slicedToArray(_useState, 2),
+    events = _useState2[0],
+    setEvents = _useState2[1];
+  const _useState3 = useState(() => new Date()),
+    _useState4 = _slicedToArray(_useState3, 2),
+    sel = _useState4[0],
+    setSel = _useState4[1];
+  const _useState5 = useState(null),
+    _useState6 = _slicedToArray(_useState5, 2),
+    modal = _useState6[0],
+    setModal = _useState6[1]; // 'add' | 'edit'
+  const _useState7 = useState(null),
+    _useState8 = _slicedToArray(_useState7, 2),
+    editEv = _useState8[0],
+    setEditEv = _useState8[1];
+  const _useState9 = useState({
+      eid: null,
+      i: 0
+    }),
+    _useState0 = _slicedToArray(_useState9, 2),
+    phState = _useState0[0],
+    setPhState = _useState0[1];
+  const _useState1 = useState('calendar'),
+    _useState10 = _slicedToArray(_useState1, 2),
+    viewMode = _useState10[0],
+    setViewMode = _useState10[1]; // 'calendar' | 'list'
+  const changeViewMode = mode => {
     setViewMode(mode);
     // スクロール位置とズームをリセット
     window.scrollTo(0, 0);
     document.documentElement.style.transform = '';
   };
-  const [dailyKey, setDailyKey] = useState(0); // デイリービュー強制更新用
-  const [moveTarget, setMoveTarget] = useState(null); // {ev, newDate}
-  const [toast, setToast] = useState(null);
+  const _useState11 = useState(0),
+    _useState12 = _slicedToArray(_useState11, 2),
+    dailyKey = _useState12[0],
+    setDailyKey = _useState12[1]; // デイリービュー強制更新用
+  const _useState13 = useState(null),
+    _useState14 = _slicedToArray(_useState13, 2),
+    moveTarget = _useState14[0],
+    setMoveTarget = _useState14[1]; // {ev, newDate}
+  const _useState15 = useState(null),
+    _useState16 = _slicedToArray(_useState15, 2),
+    toast = _useState16[0],
+    setToast = _useState16[1];
   const tmr = useRef(null);
-
   const todayStr = toDS(new Date());
   const selStr = toDS(sel);
-
-  const [anchorWeek, setAnchorWeek] = useState(() => {
-    const t=new Date(); return addDays(weekSunday(new Date(t.getFullYear(),t.getMonth(),1)),-BUFFER_WEEKS*7);
-  });
-  const [translateY, setTranslateY] = useState(-(BUFFER_WEEKS*WEEK_H));
+  const _useState17 = useState(() => {
+      const t = new Date();
+      return addDays(weekSunday(new Date(t.getFullYear(), t.getMonth(), 1)), -BUFFER_WEEKS * 7);
+    }),
+    _useState18 = _slicedToArray(_useState17, 2),
+    anchorWeek = _useState18[0],
+    setAnchorWeek = _useState18[1];
+  const _useState19 = useState(-(BUFFER_WEEKS * WEEK_H)),
+    _useState20 = _slicedToArray(_useState19, 2),
+    translateY = _useState20[0],
+    setTranslateY = _useState20[1];
   const isCalDrag = useRef(false);
   const calStartY = useRef(0);
   const calStartTY = useRef(0);
@@ -165,478 +259,1446 @@ function App() {
   const calVel = useRef(0);
   const rafId = useRef(null);
   const containerRef = useRef(null);
-
-
-  const showToast = useCallback((msg) => {
-    setToast(msg); clearTimeout(tmr.current);
-    tmr.current = setTimeout(()=>setToast(null), 2200);
+  const showToast = useCallback(msg => {
+    setToast(msg);
+    clearTimeout(tmr.current);
+    tmr.current = setTimeout(() => setToast(null), 2200);
   }, []);
-
-  const addEv = useCallback((ev) => {
-    const next=[...events,{...ev,id:genId()}]; setEvents(next); saveEv(next); showToast('追加しました');
+  const addEv = useCallback(ev => {
+    const next = [...events, {
+      ...ev,
+      id: genId()
+    }];
+    setEvents(next);
+    saveEv(next);
+    showToast('追加しました');
   }, [events, showToast]);
-
   const updateEv = useCallback((id, data) => {
-    const next=events.map(e=>e.id===id?{...e,...data}:e); setEvents(next); saveEv(next); showToast('更新しました');
+    const next = events.map(e => e.id === id ? {
+      ...e,
+      ...data
+    } : e);
+    setEvents(next);
+    saveEv(next);
+    showToast('更新しました');
   }, [events, showToast]);
-
-  const delEv = useCallback((id) => {
-    const next=events.filter(e=>e.id!==id); setEvents(next); saveEv(next); showToast('削除しました');
+  const delEv = useCallback(id => {
+    const next = events.filter(e => e.id !== id);
+    setEvents(next);
+    saveEv(next);
+    showToast('削除しました');
   }, [events, showToast]);
-
   const moveEv = useCallback((id, newDate) => {
     setEvents(prev => {
       const ev = prev.find(e => e.id === id);
       if (!ev) return prev;
-      const durDays = ev.endDate && ev.startDate
-        ? Math.round((new Date(ev.endDate+'T12:00:00') - new Date(ev.startDate+'T12:00:00')) / 86400000) : 0;
-      const newEnd = durDays > 0 ? toDS(addDays(new Date(newDate+'T12:00:00'), durDays)) : newDate;
-      const next = prev.map(e => e.id===id ? {...e, startDate:newDate, endDate:newEnd, date:newDate} : e);
-      saveEv(next); return next;
+      const durDays = ev.endDate && ev.startDate ? Math.round((new Date(ev.endDate + 'T12:00:00') - new Date(ev.startDate + 'T12:00:00')) / 86400000) : 0;
+      const newEnd = durDays > 0 ? toDS(addDays(new Date(newDate + 'T12:00:00'), durDays)) : newDate;
+      const next = prev.map(e => e.id === id ? {
+        ...e,
+        startDate: newDate,
+        endDate: newEnd,
+        date: newDate
+      } : e);
+      saveEv(next);
+      return next;
     });
     showToast('移動しました ✓');
   }, [showToast]);
-
-
-
-  const snapAndRecycle = (ty) => {
-    const sn=Math.round(ty/WEEK_H)*WEEK_H;
-    const tb=BUFFER_WEEKS+Math.round(sn/WEEK_H);
-    if(tb<3){setAnchorWeek(p=>addDays(p,28));return sn+4*WEEK_H;}
-    if(tb>TOTAL_WEEKS-VISIBLE_WEEKS-3){setAnchorWeek(p=>addDays(p,-28));return sn-4*WEEK_H;}
+  const snapAndRecycle = ty => {
+    const sn = Math.round(ty / WEEK_H) * WEEK_H;
+    const tb = BUFFER_WEEKS + Math.round(sn / WEEK_H);
+    if (tb < 3) {
+      setAnchorWeek(p => addDays(p, 28));
+      return sn + 4 * WEEK_H;
+    }
+    if (tb > TOTAL_WEEKS - VISIBLE_WEEKS - 3) {
+      setAnchorWeek(p => addDays(p, -28));
+      return sn - 4 * WEEK_H;
+    }
     return sn;
   };
   const snapRef = useRef(snapAndRecycle);
   snapRef.current = snapAndRecycle;
-
-  const momentumFn = (v0) => {
-    let v=v0;
-    const step=()=>{ if(Math.abs(v)<0.5){setTranslateY(p=>snapRef.current(p));return;} v*=0.88; setTranslateY(p=>p+v); rafId.current=requestAnimationFrame(step); };
-    rafId.current=requestAnimationFrame(step);
+  const momentumFn = v0 => {
+    let v = v0;
+    const step = () => {
+      if (Math.abs(v) < 0.5) {
+        setTranslateY(p => snapRef.current(p));
+        return;
+      }
+      v *= 0.88;
+      setTranslateY(p => p + v);
+      rafId.current = requestAnimationFrame(step);
+    };
+    rafId.current = requestAnimationFrame(step);
   };
   const momentumRef = useRef(momentumFn);
   momentumRef.current = momentumFn;
-
-  const animateTo = (from,to) => {
-    cancelAnimationFrame(rafId.current); let pos=from;
-    const step=()=>{ const d=to-pos; if(Math.abs(d)<0.8){setTranslateY(snapRef.current(to));return;} pos+=d*0.2; setTranslateY(pos); rafId.current=requestAnimationFrame(step); };
-    rafId.current=requestAnimationFrame(step);
+  const animateTo = (from, to) => {
+    cancelAnimationFrame(rafId.current);
+    let pos = from;
+    const step = () => {
+      const d = to - pos;
+      if (Math.abs(d) < 0.8) {
+        setTranslateY(snapRef.current(to));
+        return;
+      }
+      pos += d * 0.2;
+      setTranslateY(pos);
+      rafId.current = requestAnimationFrame(step);
+    };
+    rafId.current = requestAnimationFrame(step);
   };
 
   // カレンダータッチ - 全てrefで最新値を参照、useEffectで毎回再登録
   const calStateRef = useRef({});
-  calStateRef.current = { translateY, anchorWeek, setSel, setViewMode, setDailyKey, selStr };
-
-  useEffect(()=>{
-    const el = containerRef.current; if(!el) return;
-    let startX=0, startY=0, startTY=0, startTime=0, lastY=0, lastT=0, vel=0, dragging=false;
-
-    const onTS = (e) => {
+  calStateRef.current = {
+    translateY,
+    anchorWeek,
+    setSel,
+    setViewMode,
+    setDailyKey,
+    selStr
+  };
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let startX = 0,
+      startY = 0,
+      startTY = 0,
+      startTime = 0,
+      lastY = 0,
+      lastT = 0,
+      vel = 0,
+      dragging = false;
+    const onTS = e => {
       e.preventDefault();
       cancelAnimationFrame(rafId.current);
       dragging = true;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
       startTY = calStateRef.current.translateY || 0;
-      lastY = startY; lastT = Date.now(); vel = 0;
+      lastY = startY;
+      lastT = Date.now();
+      vel = 0;
     };
-    const onTM = (e) => {
-      if(!dragging) return; e.preventDefault();
+    const onTM = e => {
+      if (!dragging) return;
+      e.preventDefault();
       const y = e.touches[0].clientY;
-      const now = Date.now(), dt = now - lastT;
-      if(dt>0) vel = (y-lastY)/dt*16;
-      lastY=y; lastT=now;
+      const now = Date.now(),
+        dt = now - lastT;
+      if (dt > 0) vel = (y - lastY) / dt * 16;
+      lastY = y;
+      lastT = now;
       setTranslateY(startTY + (y - startY));
     };
-    const onTE = (e) => {
-      if(!dragging) return; e.preventDefault(); dragging=false;
+    const onTE = e => {
+      if (!dragging) return;
+      e.preventDefault();
+      dragging = false;
       const dx = Math.abs(e.changedTouches[0].clientX - startX);
       const dy = Math.abs(e.changedTouches[0].clientY - startY);
-      const { translateY:ty, anchorWeek:aw, setSel:ss, setViewMode:svm } = calStateRef.current;
+      const _calStateRef$current = calStateRef.current,
+        ty = _calStateRef$current.translateY,
+        aw = _calStateRef$current.anchorWeek,
+        ss = _calStateRef$current.setSel,
+        svm = _calStateRef$current.setViewMode;
       const mom = momentumRef.current;
       const snap = snapRef.current;
-      if(dx<10&&dy<10){
-        const x = e.changedTouches[0].clientX, y = e.changedTouches[0].clientY;
+      if (dx < 10 && dy < 10) {
+        const x = e.changedTouches[0].clientX,
+          y = e.changedTouches[0].clientY;
         const rect = el.getBoundingClientRect();
         const weekIdx = Math.floor((y - rect.top - ty) / WEEK_H);
         const dayIdx = Math.floor((x - rect.left) / (rect.width / 7));
-        if(weekIdx>=0 && weekIdx<TOTAL_WEEKS && dayIdx>=0 && dayIdx<7){
-          const clicked = addDays(addDays(aw, weekIdx*7), dayIdx);
+        if (weekIdx >= 0 && weekIdx < TOTAL_WEEKS && dayIdx >= 0 && dayIdx < 7) {
+          const clicked = addDays(addDays(aw, weekIdx * 7), dayIdx);
           const clickedStr = toDS(clicked);
           // 現在のselStrと比較
           const currentSelStr = calStateRef.current.selStr;
-          if(clickedStr === currentSelStr){
+          if (clickedStr === currentSelStr) {
             // 同じ日を2回タップ → デイリーへ
             svm('daily');
-            calStateRef.current.setDailyKey(k=>k+1);
+            calStateRef.current.setDailyKey(k => k + 1);
           } else {
             // 初回タップ → 日付選択のみ
             ss(clicked);
           }
         }
-        setTranslateY(p=>snap(p));
+        setTranslateY(p => snap(p));
         return;
       }
-      Math.abs(vel)>2 ? mom(vel) : setTranslateY(p=>snap(p));
+      Math.abs(vel) > 2 ? mom(vel) : setTranslateY(p => snap(p));
     };
-
-    el.addEventListener('touchstart', onTS, {passive:false});
-    el.addEventListener('touchmove', onTM, {passive:false});
-    el.addEventListener('touchend', onTE, {passive:false});
-    return()=>{
+    el.addEventListener('touchstart', onTS, {
+      passive: false
+    });
+    el.addEventListener('touchmove', onTM, {
+      passive: false
+    });
+    el.addEventListener('touchend', onTE, {
+      passive: false
+    });
+    return () => {
       el.removeEventListener('touchstart', onTS);
       el.removeEventListener('touchmove', onTM);
       el.removeEventListener('touchend', onTE);
     };
   }, [viewMode]); // viewModeが変わるたびに再登録（daily→calendarに戻ったとき対応）
 
-  const topWeekIndex=-Math.round(translateY/WEEK_H);
-  const midWeek=addDays(addDays(anchorWeek,topWeekIndex*7),3*7);
-  const dispYear=midWeek.getFullYear(), dispMonth=midWeek.getMonth();
-
-  const goToday=()=>{
+  const topWeekIndex = -Math.round(translateY / WEEK_H);
+  const midWeek = addDays(addDays(anchorWeek, topWeekIndex * 7), 3 * 7);
+  const dispYear = midWeek.getFullYear(),
+    dispMonth = midWeek.getMonth();
+  const goToday = () => {
     cancelAnimationFrame(rafId.current);
-    const t=new Date();
-    setAnchorWeek(addDays(weekSunday(new Date(t.getFullYear(),t.getMonth(),1)),-BUFFER_WEEKS*7));
-    setTranslateY(-(BUFFER_WEEKS*WEEK_H)); setSel(t);
+    const t = new Date();
+    setAnchorWeek(addDays(weekSunday(new Date(t.getFullYear(), t.getMonth(), 1)), -BUFFER_WEEKS * 7));
+    setTranslateY(-(BUFFER_WEEKS * WEEK_H));
+    setSel(t);
   };
-
-  const allWeeks=[];
-  for(let i=0;i<TOTAL_WEEKS;i++) allWeeks.push([0,1,2,3,4,5,6].map(d=>addDays(addDays(anchorWeek,i*7),d)));
-  const dayEvs=events.filter(e=>onDate(e,selStr)).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
-
-  return(
-    <div style={{fontFamily:'-apple-system,Hiragino Sans,sans-serif',background:'#f7f7f5',color:'#1a1a18',maxWidth:480,margin:'0 auto',minHeight:'100vh',position:'relative',overflow:'hidden'}}>
-      <div style={{background:'#fff',borderBottom:'1px solid #e8e8e4',padding:'13px 16px',position:'sticky',top:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span style={{fontSize:15,fontWeight:600}}>📅 家族カレンダー</span>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          {viewMode==='daily'&&(
-            <button onClick={()=>changeViewMode('calendar')} style={{background:'#f2f2ef',border:'none',borderRadius:8,padding:'5px 10px',fontSize:12,color:'#6b6b67',cursor:'pointer',fontWeight:500}}>← カレンダー</button>
-          )}
-          {viewMode!=='daily'&&(
-            <button onClick={()=>changeViewMode(viewMode==='calendar'?'list':'calendar')} style={{background:viewMode==='list'?'#2d6a4f':'#f2f2ef',border:'none',borderRadius:8,padding:'5px 10px',fontSize:12,color:viewMode==='list'?'#fff':'#6b6b67',cursor:'pointer',fontWeight:500}}>
-              {viewMode==='calendar'?'リスト':'カレンダー'}
-            </button>
-          )}
-          {viewMode==='calendar'&&<button onClick={goToday} style={{background:'#f2f2ef',border:'none',borderRadius:8,padding:'5px 10px',fontSize:12,color:'#6b6b67',cursor:'pointer',fontWeight:500}}>今日</button>}
-        </div>
-      </div>
-      {viewMode==='daily' ? (
-        <DailyView
-          key={dailyKey}
-          sel={sel}
-          events={events}
-          todayStr={todayStr}
-          onEdit={(ev)=>{setEditEv(ev);setModal('edit');}}
-          onMoveStart={(ev)=>setMoveTarget(ev)}
-          onDel={delEv}
-          onPhoto={(eid,i)=>{setPhState({eid,i});setModal('photo');}}
-        />
-      ) : viewMode==='list' ? (
-        <ListView events={events} todayStr={todayStr} onEdit={(ev)=>{setEditEv(ev);setModal('edit');}}/>
-      ) : (<>
-      <div style={{background:'#fff',padding:'10px 16px 6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <button onClick={()=>{cancelAnimationFrame(rafId.current);const s=snapRef.current,ty=calStateRef.current.translateY;animateTo(ty,s(ty-4*WEEK_H));}} style={{background:'#f2f2ef',border:'none',borderRadius:8,padding:'5px 12px',fontSize:16,color:'#6b6b67',cursor:'pointer'}}>‹</button>
-        <span style={{fontSize:16,fontWeight:600}}>{dispYear}年{dispMonth+1}月</span>
-        <button onClick={()=>{cancelAnimationFrame(rafId.current);const s=snapRef.current,ty=calStateRef.current.translateY;animateTo(ty,s(ty+4*WEEK_H));}} style={{background:'#f2f2ef',border:'none',borderRadius:8,padding:'5px 12px',fontSize:16,color:'#6b6b67',cursor:'pointer'}}>›</button>
-      </div>
-      <div style={{background:'#fff',display:'grid',gridTemplateColumns:'repeat(7,1fr)',textAlign:'center',padding:'4px 6px',borderBottom:'1px solid #e8e8e4',width:'100%',boxSizing:'border-box'}}>
-        {WEEKDAYS.map((d,i)=><span key={d} style={{fontSize:10,fontWeight:500,color:i===0?'#c0392b':i===6?'#2980b9':'#a8a8a4'}}>{d}</span>)}
-      </div>
-      <div ref={containerRef} style={{background:'#fff',height:WEEK_H*VISIBLE_WEEKS,overflow:'hidden',userSelect:'none',touchAction:'none',width:'100%',boxSizing:'border-box'}}>
-        <div style={{transform:`translateY(${translateY}px)`,willChange:'transform'}}>
-          {allWeeks.map((week,wi)=>(
-            <WeekRow key={wi} week={week} selStr={selStr} todayStr={todayStr} events={events}
-              onSelect={setSel}
-              onEditEv={ev=>{setEditEv(ev);setModal('edit');}}
-              dispMonth={dispMonth} height={WEEK_H}
-              onGoDaily={(d)=>{
-                setSel(d);
-                setViewMode('daily');
-                setDailyKey(k=>k+1);
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div style={{background:'#fff',marginTop:6,padding:'16px 14px 90px',borderTop:'1px solid #e8e8e4',touchAction:'pan-y',boxSizing:'border-box',width:'100%',overflowX:'hidden'}}>
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:10,fontWeight:600,color:'#6b6b67',letterSpacing:0.5,textTransform:'uppercase'}}>
-            {selStr===todayStr?`今日（${sel.getMonth()+1}月${sel.getDate()}日）の予定`:`${sel.getMonth()+1}月${sel.getDate()}日の予定`}
-          </div>
-          {getHoliday(selStr)&&<div style={{fontSize:11,color:'#c0392b',fontWeight:500,marginTop:3}}>🎌 {getHoliday(selStr)}</div>}
-        </div>
-        {dayEvs.length===0
-          ?<div style={{color:'#a8a8a4',fontSize:12,textAlign:'center',padding:'20px 0'}}>予定はありません</div>
-          :dayEvs.map(ev=>(
-            <EvCard key={ev.id} ev={ev}
-              onTap={()=>{setEditEv(ev);setModal('edit');}}
-              onDel={delEv}
-              onPhoto={(eid,i)=>{setPhState({eid,i});setModal('photo');}}
-              onMoveStart={(ev)=>setMoveTarget(ev)}
-            />
-          ))
+  const allWeeks = [];
+  for (let i = 0; i < TOTAL_WEEKS; i++) allWeeks.push([0, 1, 2, 3, 4, 5, 6].map(d => addDays(addDays(anchorWeek, i * 7), d)));
+  const dayEvs = events.filter(e => onDate(e, selStr)).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: '-apple-system,Hiragino Sans,sans-serif',
+      background: '#f7f7f5',
+      color: '#1a1a18',
+      maxWidth: 480,
+      margin: '0 auto',
+      minHeight: '100vh',
+      position: 'relative',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff',
+      borderBottom: '1px solid #e8e8e4',
+      padding: '13px 16px',
+      position: 'sticky',
+      top: 0,
+      zIndex: 100,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 15,
+      fontWeight: 600
+    }
+  }, "\uD83D\uDCC5 \u5BB6\u65CF\u30AB\u30EC\u30F3\u30C0\u30FC"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      alignItems: 'center'
+    }
+  }, viewMode === 'daily' && /*#__PURE__*/React.createElement("button", {
+    onClick: () => changeViewMode('calendar'),
+    style: {
+      background: '#f2f2ef',
+      border: 'none',
+      borderRadius: 8,
+      padding: '5px 10px',
+      fontSize: 12,
+      color: '#6b6b67',
+      cursor: 'pointer',
+      fontWeight: 500
+    }
+  }, "\u2190 \u30AB\u30EC\u30F3\u30C0\u30FC"), viewMode !== 'daily' && /*#__PURE__*/React.createElement("button", {
+    onClick: () => changeViewMode(viewMode === 'calendar' ? 'list' : 'calendar'),
+    style: {
+      background: viewMode === 'list' ? '#2d6a4f' : '#f2f2ef',
+      border: 'none',
+      borderRadius: 8,
+      padding: '5px 10px',
+      fontSize: 12,
+      color: viewMode === 'list' ? '#fff' : '#6b6b67',
+      cursor: 'pointer',
+      fontWeight: 500
+    }
+  }, viewMode === 'calendar' ? 'リスト' : 'カレンダー'), viewMode === 'calendar' && /*#__PURE__*/React.createElement("button", {
+    onClick: goToday,
+    style: {
+      background: '#f2f2ef',
+      border: 'none',
+      borderRadius: 8,
+      padding: '5px 10px',
+      fontSize: 12,
+      color: '#6b6b67',
+      cursor: 'pointer',
+      fontWeight: 500
+    }
+  }, "\u4ECA\u65E5"))), viewMode === 'daily' ? /*#__PURE__*/React.createElement(DailyView, {
+    key: dailyKey,
+    sel: sel,
+    events: events,
+    todayStr: todayStr,
+    onEdit: ev => {
+      setEditEv(ev);
+      setModal('edit');
+    },
+    onMoveStart: ev => setMoveTarget(ev),
+    onDel: delEv,
+    onPhoto: (eid, i) => {
+      setPhState({
+        eid,
+        i
+      });
+      setModal('photo');
+    }
+  }) : viewMode === 'list' ? /*#__PURE__*/React.createElement(ListView, {
+    events: events,
+    todayStr: todayStr,
+    onEdit: ev => {
+      setEditEv(ev);
+      setModal('edit');
+    }
+  }) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff',
+      padding: '10px 16px 6px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      cancelAnimationFrame(rafId.current);
+      const s = snapRef.current,
+        ty = calStateRef.current.translateY;
+      animateTo(ty, s(ty - 4 * WEEK_H));
+    },
+    style: {
+      background: '#f2f2ef',
+      border: 'none',
+      borderRadius: 8,
+      padding: '5px 12px',
+      fontSize: 16,
+      color: '#6b6b67',
+      cursor: 'pointer'
+    }
+  }, "\u2039"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16,
+      fontWeight: 600
+    }
+  }, dispYear, "\u5E74", dispMonth + 1, "\u6708"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      cancelAnimationFrame(rafId.current);
+      const s = snapRef.current,
+        ty = calStateRef.current.translateY;
+      animateTo(ty, s(ty + 4 * WEEK_H));
+    },
+    style: {
+      background: '#f2f2ef',
+      border: 'none',
+      borderRadius: 8,
+      padding: '5px 12px',
+      fontSize: 16,
+      color: '#6b6b67',
+      cursor: 'pointer'
+    }
+  }, "\u203A")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(7,1fr)',
+      textAlign: 'center',
+      padding: '4px 6px',
+      borderBottom: '1px solid #e8e8e4',
+      width: '100%',
+      boxSizing: 'border-box'
+    }
+  }, WEEKDAYS.map((d, i) => /*#__PURE__*/React.createElement("span", {
+    key: d,
+    style: {
+      fontSize: 10,
+      fontWeight: 500,
+      color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : '#a8a8a4'
+    }
+  }, d))), /*#__PURE__*/React.createElement("div", {
+    ref: containerRef,
+    style: {
+      background: '#fff',
+      height: WEEK_H * VISIBLE_WEEKS,
+      overflow: 'hidden',
+      userSelect: 'none',
+      touchAction: 'none',
+      width: '100%',
+      boxSizing: 'border-box'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      transform: `translateY(${translateY}px)`,
+      willChange: 'transform'
+    }
+  }, allWeeks.map((week, wi) => /*#__PURE__*/React.createElement(WeekRow, {
+    key: wi,
+    week: week,
+    selStr: selStr,
+    todayStr: todayStr,
+    events: events,
+    onSelect: setSel,
+    onEditEv: ev => {
+      setEditEv(ev);
+      setModal('edit');
+    },
+    dispMonth: dispMonth,
+    height: WEEK_H,
+    onGoDaily: d => {
+      setSel(d);
+      setViewMode('daily');
+      setDailyKey(k => k + 1);
+    }
+  })))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff',
+      marginTop: 6,
+      padding: '16px 14px 90px',
+      borderTop: '1px solid #e8e8e4',
+      touchAction: 'pan-y',
+      boxSizing: 'border-box',
+      width: '100%',
+      overflowX: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 600,
+      color: '#6b6b67',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase'
+    }
+  }, selStr === todayStr ? `今日（${sel.getMonth() + 1}月${sel.getDate()}日）の予定` : `${sel.getMonth() + 1}月${sel.getDate()}日の予定`), getHoliday(selStr) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#c0392b',
+      fontWeight: 500,
+      marginTop: 3
+    }
+  }, "\uD83C\uDF8C ", getHoliday(selStr))), dayEvs.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#a8a8a4',
+      fontSize: 12,
+      textAlign: 'center',
+      padding: '20px 0'
+    }
+  }, "\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093") : dayEvs.map(ev => /*#__PURE__*/React.createElement(EvCard, {
+    key: ev.id,
+    ev: ev,
+    onTap: () => {
+      setEditEv(ev);
+      setModal('edit');
+    },
+    onDel: delEv,
+    onPhoto: (eid, i) => {
+      setPhState({
+        eid,
+        i
+      });
+      setModal('photo');
+    },
+    onMoveStart: ev => setMoveTarget(ev)
+  })))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'fixed',
+      bottom: 24,
+      right: 20,
+      zIndex: 200
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setModal('add'),
+    style: {
+      width: 50,
+      height: 50,
+      borderRadius: '50%',
+      background: AC,
+      color: '#fff',
+      border: 'none',
+      fontSize: 26,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: '0 4px 16px rgba(45,106,79,.35)'
+    }
+  }, "\uFF0B")), moveTarget && /*#__PURE__*/React.createElement(MoveModal, {
+    ev: moveTarget,
+    onMove: newDate => {
+      moveEv(moveTarget.id, newDate);
+      setMoveTarget(null);
+    },
+    onClose: () => setMoveTarget(null)
+  }), modal === 'add' && /*#__PURE__*/React.createElement(EventModal, {
+    sel: sel,
+    onSave: ev => {
+      addEv(ev);
+      setModal(null);
+    },
+    onClose: () => setModal(null)
+  }), modal === 'edit' && editEv && /*#__PURE__*/React.createElement(EventModal, {
+    sel: sel,
+    initial: editEv,
+    onSave: data => {
+      updateEv(editEv.id, data);
+      setModal(null);
+      setEditEv(null);
+    },
+    onClose: () => {
+      setModal(null);
+      setEditEv(null);
+    },
+    onDel: () => {
+      delEv(editEv.id);
+      setModal(null);
+      setEditEv(null);
+    }
+  }), modal === 'photo' && /*#__PURE__*/React.createElement(PhModal, {
+    events: events,
+    state: phState,
+    setState: setPhState,
+    onClose: () => setModal(null)
+  }), toast && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'fixed',
+      bottom: 88,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: '#1a1a18',
+      color: '#fff',
+      padding: '9px 18px',
+      borderRadius: 20,
+      fontSize: 12,
+      fontWeight: 500,
+      zIndex: 400,
+      whiteSpace: 'nowrap'
+    }
+  }, toast));
+}
+function WeekRow(_ref) {
+  let week = _ref.week,
+    selStr = _ref.selStr,
+    todayStr = _ref.todayStr,
+    events = _ref.events,
+    onSelect = _ref.onSelect,
+    onEditEv = _ref.onEditEv,
+    dispMonth = _ref.dispMonth,
+    height = _ref.height,
+    onGoDaily = _ref.onGoDaily;
+  const ws = toDS(week[0]),
+    we = toDS(week[6]);
+  const normalEvs = events.filter(ev => {
+    if (ev.recurrence && ev.recurrence !== 'none') return false;
+    const a = ev.startDate || ev.date,
+      b = ev.endDate || ev.date || a;
+    return a <= we && b >= ws;
+  });
+  const recurEvs = events.filter(ev => {
+    if (!ev.recurrence || ev.recurrence === 'none') return false;
+    return week.some(c => onDate(ev, toDS(c)));
+  });
+  const expanded = [];
+  recurEvs.forEach(ev => week.forEach(c => {
+    const ds2 = toDS(c);
+    if (onDate(ev, ds2)) expanded.push({
+      ...ev,
+      startDate: ds2,
+      endDate: ds2,
+      _recur: true
+    });
+  }));
+  const allEvs = [...normalEvs, ...expanded].sort((a, b) => {
+    const as2 = a.startDate || a.date,
+      bs2 = b.startDate || b.date,
+      al = new Date(a.endDate || a.date || as2) - new Date(as2),
+      bl = new Date(b.endDate || b.date || bs2) - new Date(bs2);
+    return as2.localeCompare(bs2) || bl - al;
+  });
+  const lanes = [];
+  allEvs.forEach(ev => {
+    const es = ev.startDate || ev.date,
+      ee = ev.endDate || ev.date || es;
+    let li = 0;
+    for (;;) {
+      if (!lanes[li]) lanes[li] = [];
+      if (!lanes[li].some(o => {
+        const os = o.startDate || o.date,
+          oe = o.endDate || o.date || os;
+        return es <= oe && ee >= os;
+      })) {
+        lanes[li].push(ev);
+        break;
+      }
+      li++;
+    }
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      height,
+      display: 'flex',
+      flexDirection: 'column',
+      paddingTop: 2,
+      borderBottom: '1px solid #f2f2ef',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(7,1fr)',
+      padding: '0 4px',
+      width: '100%',
+      boxSizing: 'border-box'
+    }
+  }, week.map((cell, idx) => {
+    const d2 = toDS(cell),
+      isT = d2 === todayStr,
+      isSel = d2 === selStr,
+      isOther = cell.getMonth() !== dispMonth;
+    const holiday = getHoliday(d2);
+    const isHoliday = !!holiday;
+    const col = idx === 0 || isHoliday ? '#c0392b' : idx === 6 ? '#2980b9' : '#1a1a18';
+    return /*#__PURE__*/React.createElement("div", {
+      key: idx,
+      "data-date": d2,
+      onClick: () => onSelect(cell),
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '2px 1px',
+        cursor: 'pointer',
+        borderRadius: 6,
+        background: isSel && !isT ? ACL : 'transparent'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        lineHeight: '20px',
+        color: isOther ? '#c8c8c4' : isT ? '#fff' : col,
+        background: isT ? AC : 'transparent',
+        borderRadius: '50%',
+        width: isT ? 20 : undefined,
+        height: isT ? 20 : undefined,
+        display: isT ? 'flex' : undefined,
+        alignItems: isT ? 'center' : undefined,
+        justifyContent: isT ? 'center' : undefined,
+        fontWeight: isT ? 600 : 400,
+        pointerEvents: 'none'
+      }
+    }, cell.getDate()), !isOther && holiday && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 7,
+        color: '#c0392b',
+        lineHeight: 1,
+        textAlign: 'center',
+        width: '100%',
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis',
+        paddingBottom: 1
+      }
+    }, holiday));
+  })), allEvs.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 1,
+      padding: '1px 4px 0'
+    }
+  }, lanes.slice(0, 3).map((lane, li) => {
+    const used = new Set(),
+      bars = [];
+    lane.slice().sort((a, b) => (a.startDate || a.date).localeCompare(b.startDate || b.date)).forEach(ev => {
+      const es = ev.startDate || ev.date,
+        ee = ev.endDate || ev.date || es;
+      let cs = -1,
+        ce = -1;
+      week.forEach((c, i) => {
+        const s2 = toDS(c);
+        if (s2 >= es && s2 <= ee) {
+          if (cs < 0) cs = i;
+          ce = i;
         }
-      </div>
-
-      </>)}
-      <div style={{position:'fixed',bottom:24,right:20,zIndex:200}}>
-        <button onClick={()=>setModal('add')} style={{width:50,height:50,borderRadius:'50%',background:AC,color:'#fff',border:'none',fontSize:26,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 16px rgba(45,106,79,.35)'}}>＋</button>
-      </div>
-
-
-      {moveTarget&&(
-        <MoveModal
-          ev={moveTarget}
-          onMove={(newDate)=>{ moveEv(moveTarget.id, newDate); setMoveTarget(null); }}
-          onClose={()=>setMoveTarget(null)}
-        />
-      )}
-      {modal==='add'&&<EventModal sel={sel} onSave={ev=>{addEv(ev);setModal(null);}} onClose={()=>setModal(null)}/>}
-      {modal==='edit'&&editEv&&<EventModal sel={sel} initial={editEv} onSave={data=>{updateEv(editEv.id,data);setModal(null);setEditEv(null);}} onClose={()=>{setModal(null);setEditEv(null);}} onDel={()=>{delEv(editEv.id);setModal(null);setEditEv(null);}}/>}
-      {modal==='photo'&&<PhModal events={events} state={phState} setState={setPhState} onClose={()=>setModal(null)}/>}
-      {toast&&<div style={{position:'fixed',bottom:88,left:'50%',transform:'translateX(-50%)',background:'#1a1a18',color:'#fff',padding:'9px 18px',borderRadius:20,fontSize:12,fontWeight:500,zIndex:400,whiteSpace:'nowrap'}}>{toast}</div>}
-    </div>
-  );
+      });
+      if (cs < 0) return;
+      for (let i = cs; i <= ce; i++) used.add(i);
+      const rL = es === toDS(week[cs]),
+        rR = ee === toDS(week[ce]);
+      const br = rL && rR ? '4px' : rL ? '4px 0 0 4px' : rR ? '0 4px 4px 0' : '0';
+      bars.push(/*#__PURE__*/React.createElement("div", {
+        key: ev.id + es,
+        "data-date": toDS(week[cs]),
+        onClick: e => {
+          e.stopPropagation();
+          if (onGoDaily) {
+            onGoDaily(week[cs]);
+          } else {
+            onSelect(week[cs]);
+          }
+        },
+        style: {
+          height: 10,
+          lineHeight: '10px',
+          fontSize: 8,
+          color: '#fff',
+          padding: '0 3px',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          textOverflow: 'ellipsis',
+          cursor: 'pointer',
+          alignSelf: 'center',
+          background: ev.color || AC,
+          gridColumn: `${cs + 1}/${ce + 2}`,
+          borderRadius: br,
+          marginLeft: rL ? 1 : 0,
+          marginRight: rR ? 1 : 0,
+          fontWeight: 500,
+          opacity: ev._recur ? .85 : 1
+        }
+      }, rL || cs === 0 ? ev._recur ? '🔁 ' + ev.title : ev.title : ''));
+    });
+    week.forEach((_, i) => {
+      if (!used.has(i)) bars.push(/*#__PURE__*/React.createElement("div", {
+        key: 'p' + li + i,
+        style: {
+          gridColumn: i + 1
+        }
+      }));
+    });
+    return /*#__PURE__*/React.createElement("div", {
+      key: li,
+      style: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(7,1fr)',
+        height: 11
+      }
+    }, bars);
+  }), lanes.length > 3 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: '#a8a8a4',
+      textAlign: 'right',
+      paddingRight: 2
+    }
+  }, "+", lanes.length - 3)));
 }
-
-function WeekRow({week,selStr,todayStr,events,onSelect,onEditEv,dispMonth,height,onGoDaily}){
-  const ws=toDS(week[0]),we=toDS(week[6]);
-  const normalEvs=events.filter(ev=>{if(ev.recurrence&&ev.recurrence!=='none')return false;const a=ev.startDate||ev.date,b=ev.endDate||ev.date||a;return a<=we&&b>=ws;});
-  const recurEvs=events.filter(ev=>{if(!ev.recurrence||ev.recurrence==='none')return false;return week.some(c=>onDate(ev,toDS(c)));});
-  const expanded=[];
-  recurEvs.forEach(ev=>week.forEach(c=>{const ds2=toDS(c);if(onDate(ev,ds2))expanded.push({...ev,startDate:ds2,endDate:ds2,_recur:true});}));
-  const allEvs=[...normalEvs,...expanded].sort((a,b)=>{const as2=a.startDate||a.date,bs2=b.startDate||b.date,al=new Date(a.endDate||a.date||as2)-new Date(as2),bl=new Date(b.endDate||b.date||bs2)-new Date(bs2);return as2.localeCompare(bs2)||bl-al;});
-  const lanes=[];
-  allEvs.forEach(ev=>{const es=ev.startDate||ev.date,ee=ev.endDate||ev.date||es;let li=0;for(;;){if(!lanes[li])lanes[li]=[];if(!lanes[li].some(o=>{const os=o.startDate||o.date,oe=o.endDate||o.date||os;return es<=oe&&ee>=os;})){lanes[li].push(ev);break;}li++;}});
-  return(
-    <div style={{height,display:'flex',flexDirection:'column',paddingTop:2,borderBottom:'1px solid #f2f2ef',overflow:'hidden'}}>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',padding:'0 4px',width:'100%',boxSizing:'border-box'}}>
-        {week.map((cell,idx)=>{
-          const d2=toDS(cell),isT=d2===todayStr,isSel=d2===selStr,isOther=cell.getMonth()!==dispMonth;
-          const holiday=getHoliday(d2);
-          const isHoliday=!!holiday;
-          const col=idx===0||isHoliday?'#c0392b':idx===6?'#2980b9':'#1a1a18';
-          return(
-            <div key={idx} data-date={d2} onClick={()=>onSelect(cell)} style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 1px',cursor:'pointer',borderRadius:6,background:isSel&&!isT?ACL:'transparent'}}>
-              <span style={{fontSize:11,lineHeight:'20px',color:isOther?'#c8c8c4':isT?'#fff':col,background:isT?AC:'transparent',borderRadius:'50%',width:isT?20:undefined,height:isT?20:undefined,display:isT?'flex':undefined,alignItems:isT?'center':undefined,justifyContent:isT?'center':undefined,fontWeight:isT?600:400,pointerEvents:'none'}}>
-                {cell.getDate()}
-              </span>
-              {!isOther&&holiday&&<span style={{fontSize:7,color:'#c0392b',lineHeight:1,textAlign:'center',width:'100%',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',paddingBottom:1}}>{holiday}</span>}
-            </div>
-          );
-        })}
-      </div>
-      {allEvs.length>0&&(
-        <div style={{display:'flex',flexDirection:'column',gap:1,padding:'1px 4px 0'}}>
-          {lanes.slice(0,3).map((lane,li)=>{
-            const used=new Set(),bars=[];
-            lane.slice().sort((a,b)=>(a.startDate||a.date).localeCompare(b.startDate||b.date)).forEach(ev=>{
-              const es=ev.startDate||ev.date,ee=ev.endDate||ev.date||es;let cs=-1,ce=-1;
-              week.forEach((c,i)=>{const s2=toDS(c);if(s2>=es&&s2<=ee){if(cs<0)cs=i;ce=i;}});
-              if(cs<0)return;for(let i=cs;i<=ce;i++)used.add(i);
-              const rL=es===toDS(week[cs]),rR=ee===toDS(week[ce]);
-              const br=rL&&rR?'4px':rL?'4px 0 0 4px':rR?'0 4px 4px 0':'0';
-              bars.push(<div key={ev.id+es} data-date={toDS(week[cs])} onClick={e=>{e.stopPropagation();if(onGoDaily){onGoDaily(week[cs]);}else{onSelect(week[cs]);}}} style={{height:10,lineHeight:'10px',fontSize:8,color:'#fff',padding:'0 3px',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',cursor:'pointer',alignSelf:'center',background:ev.color||AC,gridColumn:`${cs+1}/${ce+2}`,borderRadius:br,marginLeft:rL?1:0,marginRight:rR?1:0,fontWeight:500,opacity:ev._recur?.85:1}}>{(rL||cs===0)?(ev._recur?'🔁 '+ev.title:ev.title):''}</div>);
-            });
-            week.forEach((_,i)=>{if(!used.has(i))bars.push(<div key={'p'+li+i} style={{gridColumn:i+1}}/>);});
-            return <div key={li} style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',height:11}}>{bars}</div>;
-          })}
-          {lanes.length>3&&<div style={{fontSize:9,color:'#a8a8a4',textAlign:'right',paddingRight:2}}>+{lanes.length-3}</div>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EvCard({ev,onTap,onDel,onPhoto,onMoveStart}){
-  const a=ev.startDate||ev.date,b=ev.endDate||ev.date||a;
-  const photos=ev.photos||(ev.photo?[ev.photo]:[]);
-  const recurLbl=recurrenceLabel(ev);
-  return(
-    <div
-      onClick={onTap}
-      style={{padding:'11px 13px',borderRadius:12,marginBottom:7,background:'#f2f2ef',borderLeft:`3px solid ${ev.color||AC}`,cursor:'pointer',transition:'opacity 0.15s',userSelect:'none',opacity:1}}>
-      <div style={{display:'flex',alignItems:'flex-start'}}>
-        <div style={{flex:1}}>
-          <div style={{fontSize:14,fontWeight:500,display:'flex',alignItems:'center',gap:4}}>
-            {ev.title}
-          </div>
-          {recurLbl?<div style={{fontSize:11,color:'#6b6b67',marginTop:2}}>🔁 {recurLbl}</div>:a!==b&&<div style={{fontSize:11,color:'#6b6b67',marginTop:2}}>📅 {a} 〜 {b}</div>}
-          {ev.time&&<div style={{fontSize:11,color:'#6b6b67',marginTop:2}}>🕐 {ev.time}</div>}
-          {ev.memo&&<div style={{fontSize:11,color:'#6b6b67',marginTop:2}}>📝 {ev.memo}</div>}
-        </div>
-        <div style={{display:'flex',gap:4,alignItems:'center'}}>
-          <div style={{display:'flex',gap:2,alignItems:'center'}}>
-          {(!ev.recurrence||ev.recurrence==='none')&&<button onClick={e=>{e.stopPropagation();onMoveStart(ev);}} style={{background:'#2d6a4f',border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',padding:'4px 10px',borderRadius:6}}>移動</button>}
-          <button onClick={e=>{e.stopPropagation();if(confirm('削除しますか？'))onDel(ev.id);}} style={{background:'none',border:'none',color:'#a8a8a4',fontSize:14,cursor:'pointer',padding:'0 2px'}}>✕</button>
-        </div>
-        </div>
-      </div>
-      {photos.length>0&&<div onClick={e=>e.stopPropagation()} style={{display:'grid',gridTemplateColumns:photos.length===1?'1fr':'repeat(3,1fr)',gap:3,marginTop:8}}>{photos.map((src,i)=><img key={i} src={src} onClick={()=>onPhoto(ev.id,i)} style={{width:'100%',aspectRatio:photos.length===1?'16/9':'1',objectFit:'cover',borderRadius:6,cursor:'pointer'}}/>)}</div>}
-    </div>
-  );
+function EvCard(_ref2) {
+  let ev = _ref2.ev,
+    onTap = _ref2.onTap,
+    onDel = _ref2.onDel,
+    onPhoto = _ref2.onPhoto,
+    onMoveStart = _ref2.onMoveStart;
+  const a = ev.startDate || ev.date,
+    b = ev.endDate || ev.date || a;
+  const photos = ev.photos || (ev.photo ? [ev.photo] : []);
+  const recurLbl = recurrenceLabel(ev);
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: onTap,
+    style: {
+      padding: '11px 13px',
+      borderRadius: 12,
+      marginBottom: 7,
+      background: '#f2f2ef',
+      borderLeft: `3px solid ${ev.color || AC}`,
+      cursor: 'pointer',
+      transition: 'opacity 0.15s',
+      userSelect: 'none',
+      opacity: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'flex-start'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 500,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 4
+    }
+  }, ev.title), recurLbl ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#6b6b67',
+      marginTop: 2
+    }
+  }, "\uD83D\uDD01 ", recurLbl) : a !== b && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#6b6b67',
+      marginTop: 2
+    }
+  }, "\uD83D\uDCC5 ", a, " \u301C ", b), ev.time && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#6b6b67',
+      marginTop: 2
+    }
+  }, "\uD83D\uDD50 ", ev.time), ev.memo && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#6b6b67',
+      marginTop: 2
+    }
+  }, "\uD83D\uDCDD ", ev.memo)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 4,
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 2,
+      alignItems: 'center'
+    }
+  }, (!ev.recurrence || ev.recurrence === 'none') && /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      onMoveStart(ev);
+    },
+    style: {
+      background: '#2d6a4f',
+      border: 'none',
+      color: '#fff',
+      fontSize: 11,
+      fontWeight: 600,
+      cursor: 'pointer',
+      padding: '4px 10px',
+      borderRadius: 6
+    }
+  }, "\u79FB\u52D5"), /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      if (confirm('削除しますか？')) onDel(ev.id);
+    },
+    style: {
+      background: 'none',
+      border: 'none',
+      color: '#a8a8a4',
+      fontSize: 14,
+      cursor: 'pointer',
+      padding: '0 2px'
+    }
+  }, "\u2715")))), photos.length > 0 && /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      display: 'grid',
+      gridTemplateColumns: photos.length === 1 ? '1fr' : 'repeat(3,1fr)',
+      gap: 3,
+      marginTop: 8
+    }
+  }, photos.map((src, i) => /*#__PURE__*/React.createElement("img", {
+    key: i,
+    src: src,
+    onClick: () => onPhoto(ev.id, i),
+    style: {
+      width: '100%',
+      aspectRatio: photos.length === 1 ? '16/9' : '1',
+      objectFit: 'cover',
+      borderRadius: 6,
+      cursor: 'pointer'
+    }
+  }))));
 }
 
 // 追加・編集共通モーダル
-function EventModal({sel,initial,onSave,onClose,onDel}){
-  const isEdit=!!initial;
-  const [title,setTitle]=useState(initial?.title||'');
-  const [start,setStart]=useState(initial?.startDate||initial?.date||toDS(sel));
-  const [end,setEnd]=useState(initial?.endDate||initial?.startDate||initial?.date||toDS(sel));
-  const [time,setTime]=useState(initial?.time||'');
-  const [memo,setMemo]=useState(initial?.memo||'');
-  const [color,setColor]=useState(initial?.color||COLORS[0]);
-  const [photos,setPhotos]=useState(initial?.photos||(initial?.photo?[initial.photo]:[]));
-  const [recurrence,setRecurrence]=useState(initial?.recurrence||'none');
-  const fileRef=useRef();
-  const handleFiles=e=>{Array.from(e.target.files||[]).slice(0,10-photos.length).forEach(f=>resizeImg(f,url=>setPhotos(p=>[...p,url])));e.target.value='';};
-  const save=()=>{
-    if(!title.trim()){alert('タイトルを入力してください');return;}
-    onSave({title:title.trim(),startDate:start,endDate:recurrence!=='none'?start:(end||start),date:start,time,memo:memo.trim(),color,recurrence,photos:photos.length?[...photos]:null,photo:photos[0]||null});
+function EventModal(_ref3) {
+  let sel = _ref3.sel,
+    initial = _ref3.initial,
+    onSave = _ref3.onSave,
+    onClose = _ref3.onClose,
+    onDel = _ref3.onDel;
+  const isEdit = !!initial;
+  const _useState21 = useState(initial?.title || ''),
+    _useState22 = _slicedToArray(_useState21, 2),
+    title = _useState22[0],
+    setTitle = _useState22[1];
+  const _useState23 = useState(initial?.startDate || initial?.date || toDS(sel)),
+    _useState24 = _slicedToArray(_useState23, 2),
+    start = _useState24[0],
+    setStart = _useState24[1];
+  const _useState25 = useState(initial?.endDate || initial?.startDate || initial?.date || toDS(sel)),
+    _useState26 = _slicedToArray(_useState25, 2),
+    end = _useState26[0],
+    setEnd = _useState26[1];
+  const _useState27 = useState(initial?.time || ''),
+    _useState28 = _slicedToArray(_useState27, 2),
+    time = _useState28[0],
+    setTime = _useState28[1];
+  const _useState29 = useState(initial?.memo || ''),
+    _useState30 = _slicedToArray(_useState29, 2),
+    memo = _useState30[0],
+    setMemo = _useState30[1];
+  const _useState31 = useState(initial?.color || COLORS[0]),
+    _useState32 = _slicedToArray(_useState31, 2),
+    color = _useState32[0],
+    setColor = _useState32[1];
+  const _useState33 = useState(initial?.photos || (initial?.photo ? [initial.photo] : [])),
+    _useState34 = _slicedToArray(_useState33, 2),
+    photos = _useState34[0],
+    setPhotos = _useState34[1];
+  const _useState35 = useState(initial?.recurrence || 'none'),
+    _useState36 = _slicedToArray(_useState35, 2),
+    recurrence = _useState36[0],
+    setRecurrence = _useState36[1];
+  const fileRef = useRef();
+  const handleFiles = e => {
+    Array.from(e.target.files || []).slice(0, 10 - photos.length).forEach(f => resizeImg(f, url => setPhotos(p => [...p, url])));
+    e.target.value = '';
   };
-  const recurPreview=()=>{const d=new Date(start+'T12:00:00');if(recurrence==='weekly')return`毎週${WEEKDAYS[d.getDay()]}曜日に繰り返し`;if(recurrence==='monthly')return`毎月${d.getDate()}日に繰り返し`;if(recurrence==='yearly')return`毎年${d.getMonth()+1}月${d.getDate()}日に繰り返し`;};
-  const inp={width:'100%',padding:'8px 10px',border:'1.5px solid #e8e8e4',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff',color:'#1a1a18',outline:'none',marginBottom:8,boxSizing:'border-box'};
-  const lbl={fontSize:9,color:'#a8a8a4',fontWeight:500,letterSpacing:0.5,textTransform:'uppercase',display:'block',marginBottom:3};
-  return(
-    <div onClick={onClose} style={{position:'fixed',left:0,top:0,bottom:0,background:'rgba(0,0,0,.4)',display:'flex',alignItems:'flex-end',zIndex:300,width:'100vw',maxWidth:'100vw'}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:'18px 18px 0 0',padding:'14px 14px 24px',width:'100%',margin:0,maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box',overflowX:'hidden'}}>
-        <div style={{width:32,height:3,background:'#e8e8e4',borderRadius:2,margin:'0 auto 10px'}}/>
-        <div style={{fontSize:15,fontWeight:600,marginBottom:10}}>{isEdit?'予定を編集':'予定を追加'}</div>
-        <label style={lbl}>タイトル</label>
-        <input autoFocus value={title} onChange={e=>setTitle(e.target.value)} placeholder="例：旅行、誕生日..." style={inp}/>
-        <label style={lbl}>{recurrence!=='none'?'開始日':'期間'}</label>
-        {recurrence!=='none'
-          ?<input type="date" value={start} onChange={e=>setStart(e.target.value)} style={inp}/>
-          :<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:8}}>
-            <div><label style={{fontSize:10,color:'#a8a8a4',display:'block',marginBottom:4}}>開始日</label><input type="date" value={start} onChange={e=>{setStart(e.target.value);if(!end||end<e.target.value)setEnd(e.target.value);}} style={{...inp,marginBottom:0}}/></div>
-            <div><label style={{fontSize:10,color:'#a8a8a4',display:'block',marginBottom:4}}>終了日</label><input type="date" value={end} onChange={e=>setEnd(e.target.value)} style={{...inp,marginBottom:0}}/></div>
-          </div>
-        }
-        <label style={lbl}>時間（任意）</label>
-        <input type="time" value={time} onChange={e=>setTime(e.target.value)} style={inp}/>
-        <label style={lbl}>繰り返し</label>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:4,marginBottom:8}}>
-          {Object.entries(RECURRENCE_LABELS).map(([val,l2])=>(
-            <button key={val} onClick={()=>setRecurrence(val)} style={{padding:'6px 4px',borderRadius:8,fontSize:11,fontWeight:500,border:`1.5px solid ${recurrence===val?AC:'#e8e8e4'}`,background:recurrence===val?ACL:'#fff',color:recurrence===val?AC:'#6b6b67',cursor:'pointer'}}>{l2}</button>
-          ))}
-        </div>
-        {recurPreview()&&<div style={{fontSize:10,color:AC,background:ACL,borderRadius:8,padding:'5px 10px',marginBottom:8}}>🔁 {recurPreview()}</div>}
-        <label style={lbl}>メモ（任意）</label>
-        <textarea value={memo} onChange={e=>setMemo(e.target.value)} placeholder="メモ..." style={{...inp,height:52,resize:'none'}}/>
-        <label style={lbl}>色</label>
-        <div style={{display:'flex',gap:8,marginBottom:8}}>
-          {COLORS.map(c=><div key={c} onClick={()=>setColor(c)} style={{width:24,height:24,borderRadius:'50%',background:c,cursor:'pointer',border:color===c?'2.5px solid #1a1a18':'2.5px solid transparent'}}/>)}
-        </div>
-<label style={lbl}>写真（最大10枚）</label>
-        {photos.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:5,marginBottom:10}}>{photos.map((url,i)=><div key={i} style={{position:'relative',aspectRatio:'1',borderRadius:8,overflow:'hidden'}}><img src={url} style={{width:'100%',height:'100%',objectFit:'cover'}}/><button onClick={()=>setPhotos(p=>p.filter((_,j)=>j!==i))} style={{position:'absolute',top:3,right:3,width:18,height:18,borderRadius:'50%',background:'rgba(0,0,0,.55)',color:'#fff',border:'none',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button></div>)}</div>}
-        {photos.length<10&&<div onClick={()=>fileRef.current?.click()} style={{border:'1.5px dashed #e8e8e4',borderRadius:8,padding:10,textAlign:'center',cursor:'pointer',color:'#a8a8a4',fontSize:12,marginBottom:8}}>📷 タップして写真を追加<input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{display:'none'}}/></div>}
-        <div style={{display:'grid',gridTemplateColumns:isEdit?'1fr 1fr 1fr':'1fr 1fr',gap:8,marginTop:6}}>
-          <button onClick={onClose} style={{padding:10,borderRadius:8,fontSize:13,fontWeight:500,border:'none',cursor:'pointer',background:'#f2f2ef',color:'#6b6b67'}}>キャンセル</button>
-          {isEdit&&<button onClick={()=>{if(confirm('削除しますか？'))onDel();}} style={{padding:12,borderRadius:8,fontSize:14,fontWeight:500,border:'none',cursor:'pointer',background:'#fde8e8',color:'#c0392b'}}>削除</button>}
-          <button onClick={save} style={{padding:10,borderRadius:8,fontSize:13,fontWeight:500,border:'none',cursor:'pointer',background:AC,color:'#fff'}}>{isEdit?'更新':'保存'}</button>
-        </div>
-      </div>
-    </div>
-  );
+  const save = () => {
+    if (!title.trim()) {
+      alert('タイトルを入力してください');
+      return;
+    }
+    onSave({
+      title: title.trim(),
+      startDate: start,
+      endDate: recurrence !== 'none' ? start : end || start,
+      date: start,
+      time,
+      memo: memo.trim(),
+      color,
+      recurrence,
+      photos: photos.length ? [...photos] : null,
+      photo: photos[0] || null
+    });
+  };
+  const recurPreview = () => {
+    const d = new Date(start + 'T12:00:00');
+    if (recurrence === 'weekly') return `毎週${WEEKDAYS[d.getDay()]}曜日に繰り返し`;
+    if (recurrence === 'monthly') return `毎月${d.getDate()}日に繰り返し`;
+    if (recurrence === 'yearly') return `毎年${d.getMonth() + 1}月${d.getDate()}日に繰り返し`;
+  };
+  const inp = {
+    width: '100%',
+    padding: '8px 10px',
+    border: '1.5px solid #e8e8e4',
+    borderRadius: 8,
+    fontSize: 13,
+    fontFamily: 'inherit',
+    background: '#fff',
+    color: '#1a1a18',
+    outline: 'none',
+    marginBottom: 8,
+    boxSizing: 'border-box'
+  };
+  const lbl = {
+    fontSize: 9,
+    color: '#a8a8a4',
+    fontWeight: 500,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    display: 'block',
+    marginBottom: 3
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: onClose,
+    style: {
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,.4)',
+      display: 'flex',
+      alignItems: 'flex-end',
+      zIndex: 300,
+      width: '100vw',
+      maxWidth: '100vw'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      background: '#fff',
+      borderRadius: '18px 18px 0 0',
+      padding: '14px 14px 24px',
+      width: '100%',
+      margin: 0,
+      maxHeight: '92vh',
+      overflowY: 'auto',
+      boxSizing: 'border-box',
+      overflowX: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 32,
+      height: 3,
+      background: '#e8e8e4',
+      borderRadius: 2,
+      margin: '0 auto 10px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 600,
+      marginBottom: 10
+    }
+  }, isEdit ? '予定を編集' : '予定を追加'), /*#__PURE__*/React.createElement("label", {
+    style: lbl
+  }, "\u30BF\u30A4\u30C8\u30EB"), /*#__PURE__*/React.createElement("input", {
+    autoFocus: true,
+    value: title,
+    onChange: e => setTitle(e.target.value),
+    placeholder: "\u4F8B\uFF1A\u65C5\u884C\u3001\u8A95\u751F\u65E5...",
+    style: inp
+  }), /*#__PURE__*/React.createElement("label", {
+    style: lbl
+  }, recurrence !== 'none' ? '開始日' : '期間'), recurrence !== 'none' ? /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: start,
+    onChange: e => setStart(e.target.value),
+    style: inp
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 6,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 10,
+      color: '#a8a8a4',
+      display: 'block',
+      marginBottom: 4
+    }
+  }, "\u958B\u59CB\u65E5"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: start,
+    onChange: e => {
+      setStart(e.target.value);
+      if (!end || end < e.target.value) setEnd(e.target.value);
+    },
+    style: {
+      ...inp,
+      marginBottom: 0
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 10,
+      color: '#a8a8a4',
+      display: 'block',
+      marginBottom: 4
+    }
+  }, "\u7D42\u4E86\u65E5"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: end,
+    onChange: e => setEnd(e.target.value),
+    style: {
+      ...inp,
+      marginBottom: 0
+    }
+  }))), /*#__PURE__*/React.createElement("label", {
+    style: lbl
+  }, "\u6642\u9593\uFF08\u4EFB\u610F\uFF09"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: time,
+    onChange: e => setTime(e.target.value),
+    style: inp
+  }), /*#__PURE__*/React.createElement("label", {
+    style: lbl
+  }, "\u7E70\u308A\u8FD4\u3057"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4,1fr)',
+      gap: 4,
+      marginBottom: 8
+    }
+  }, Object.entries(RECURRENCE_LABELS).map(_ref4 => {
+    let _ref5 = _slicedToArray(_ref4, 2),
+      val = _ref5[0],
+      l2 = _ref5[1];
+    return /*#__PURE__*/React.createElement("button", {
+      key: val,
+      onClick: () => setRecurrence(val),
+      style: {
+        padding: '6px 4px',
+        borderRadius: 8,
+        fontSize: 11,
+        fontWeight: 500,
+        border: `1.5px solid ${recurrence === val ? AC : '#e8e8e4'}`,
+        background: recurrence === val ? ACL : '#fff',
+        color: recurrence === val ? AC : '#6b6b67',
+        cursor: 'pointer'
+      }
+    }, l2);
+  })), recurPreview() && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: AC,
+      background: ACL,
+      borderRadius: 8,
+      padding: '5px 10px',
+      marginBottom: 8
+    }
+  }, "\uD83D\uDD01 ", recurPreview()), /*#__PURE__*/React.createElement("label", {
+    style: lbl
+  }, "\u30E1\u30E2\uFF08\u4EFB\u610F\uFF09"), /*#__PURE__*/React.createElement("textarea", {
+    value: memo,
+    onChange: e => setMemo(e.target.value),
+    placeholder: "\u30E1\u30E2...",
+    style: {
+      ...inp,
+      height: 52,
+      resize: 'none'
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    style: lbl
+  }, "\u8272"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginBottom: 8
+    }
+  }, COLORS.map(c => /*#__PURE__*/React.createElement("div", {
+    key: c,
+    onClick: () => setColor(c),
+    style: {
+      width: 24,
+      height: 24,
+      borderRadius: '50%',
+      background: c,
+      cursor: 'pointer',
+      border: color === c ? '2.5px solid #1a1a18' : '2.5px solid transparent'
+    }
+  }))), /*#__PURE__*/React.createElement("label", {
+    style: lbl
+  }, "\u5199\u771F\uFF08\u6700\u592710\u679A\uFF09"), photos.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3,1fr)',
+      gap: 5,
+      marginBottom: 10
+    }
+  }, photos.map((url, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      position: 'relative',
+      aspectRatio: '1',
+      borderRadius: 8,
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: url,
+    style: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover'
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setPhotos(p => p.filter((_, j) => j !== i)),
+    style: {
+      position: 'absolute',
+      top: 3,
+      right: 3,
+      width: 18,
+      height: 18,
+      borderRadius: '50%',
+      background: 'rgba(0,0,0,.55)',
+      color: '#fff',
+      border: 'none',
+      fontSize: 11,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  }, "\u2715")))), photos.length < 10 && /*#__PURE__*/React.createElement("div", {
+    onClick: () => fileRef.current?.click(),
+    style: {
+      border: '1.5px dashed #e8e8e4',
+      borderRadius: 8,
+      padding: 10,
+      textAlign: 'center',
+      cursor: 'pointer',
+      color: '#a8a8a4',
+      fontSize: 12,
+      marginBottom: 8
+    }
+  }, "\uD83D\uDCF7 \u30BF\u30C3\u30D7\u3057\u3066\u5199\u771F\u3092\u8FFD\u52A0", /*#__PURE__*/React.createElement("input", {
+    ref: fileRef,
+    type: "file",
+    accept: "image/*",
+    multiple: true,
+    onChange: handleFiles,
+    style: {
+      display: 'none'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: isEdit ? '1fr 1fr 1fr' : '1fr 1fr',
+      gap: 8,
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: {
+      padding: 10,
+      borderRadius: 8,
+      fontSize: 13,
+      fontWeight: 500,
+      border: 'none',
+      cursor: 'pointer',
+      background: '#f2f2ef',
+      color: '#6b6b67'
+    }
+  }, "\u30AD\u30E3\u30F3\u30BB\u30EB"), isEdit && /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (confirm('削除しますか？')) onDel();
+    },
+    style: {
+      padding: 12,
+      borderRadius: 8,
+      fontSize: 14,
+      fontWeight: 500,
+      border: 'none',
+      cursor: 'pointer',
+      background: '#fde8e8',
+      color: '#c0392b'
+    }
+  }, "\u524A\u9664"), /*#__PURE__*/React.createElement("button", {
+    onClick: save,
+    style: {
+      padding: 10,
+      borderRadius: 8,
+      fontSize: 13,
+      fontWeight: 500,
+      border: 'none',
+      cursor: 'pointer',
+      background: AC,
+      color: '#fff'
+    }
+  }, isEdit ? '更新' : '保存'))));
 }
-
-
-
-
-
-
-function DailyView({sel, events, todayStr, onEdit, onMoveStart, onDel, onPhoto}) {
+function DailyView(_ref6) {
+  let sel = _ref6.sel,
+    events = _ref6.events,
+    todayStr = _ref6.todayStr,
+    onEdit = _ref6.onEdit,
+    onMoveStart = _ref6.onMoveStart,
+    onDel = _ref6.onDel,
+    onPhoto = _ref6.onPhoto;
   const selStr = toDS(sel);
-  const weekdays = ['日','月','火','水','木','金','土'];
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
   const d = sel;
   const isToday = selStr === todayStr;
   const holiday = getHoliday(selStr);
   const wday = weekdays[d.getDay()];
   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-
-  const dayEvs = events
-    .filter(e => onDate(e, selStr))
-    .sort((a,b) => (a.time||'99:99').localeCompare(b.time||'99:99'));
-
-
-  return (
-    <div
-      style={{background:'#f7f7f5',minHeight:'100vh',paddingBottom:100,width:'100%',boxSizing:'border-box',overflowX:'hidden'}}
-    >
-      {/* 日付ヘッダー */}
-      <div style={{background:'#fff',padding:'20px 16px 16px',borderBottom:'1px solid #e8e8e4',boxSizing:'border-box',width:'100%'}}>
-        <div style={{display:'flex',alignItems:'flex-end',gap:8}}>
-          <span style={{fontSize:42,fontWeight:700,lineHeight:1,color:isToday?'#2d6a4f':isWeekend?d.getDay()===0?'#c0392b':'#2980b9':'#1a1a18'}}>
-            {d.getDate()}
-          </span>
-          <div style={{paddingBottom:4}}>
-            <div style={{fontSize:14,color:'#6b6b67',fontWeight:500}}>
-              {d.getFullYear()}年{d.getMonth()+1}月 {wday}曜日
-            </div>
-            {holiday&&<div style={{fontSize:12,color:'#c0392b',marginTop:2}}>🎌 {holiday}</div>}
-            {isToday&&<div style={{fontSize:12,color:'#2d6a4f',fontWeight:600,marginTop:2}}>今日</div>}
-          </div>
-        </div>
-        <div style={{marginTop:10,fontSize:11,color:'#a8a8a4',display:'flex',alignItems:'center',gap:4}}>
-        </div>
-      </div>
-
-      {/* 予定リスト */}
-      {dayEvs.length === 0 ? (
-        <div style={{padding:'48px 20px',textAlign:'center',color:'#a8a8a4',fontSize:14}}>
-          この日の予定はありません
-        </div>
-      ) : (
-        <div style={{marginTop:8}}>
-          {dayEvs.map(ev => {
-            const recurLbl = recurrenceLabel(ev);
-            const photos = ev.photos||(ev.photo?[ev.photo]:[]);
-            const canMove = !ev.recurrence||ev.recurrence==='none';
-            return (
-              <div key={ev.id} style={{background:'#fff',marginBottom:1,borderLeft:`4px solid ${ev.color||'#2d6a4f'}`}}>
-                <div onClick={()=>onEdit(ev)} style={{padding:'14px 16px',cursor:'pointer'}}>
-                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:16,fontWeight:500,color:'#1a1a18'}}>{ev.title}</div>
-                      {ev.time&&<div style={{fontSize:13,color:'#6b6b67',marginTop:3}}>🕐 {ev.time}</div>}
-                      {recurLbl&&<div style={{fontSize:12,color:'#a8a8a4',marginTop:3}}>🔁 {recurLbl}</div>}
-                      {ev.memo&&<div style={{fontSize:13,color:'#6b6b67',marginTop:3}}>📝 {ev.memo}</div>}
-                    </div>
-                    <div style={{display:'flex',gap:6,alignItems:'center',marginLeft:8}}>
-                      {canMove&&<button onClick={e=>{e.stopPropagation();onMoveStart(ev);}} style={{background:'#2d6a4f',border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',padding:'4px 10px',borderRadius:6}}>移動</button>}
-                      <button onClick={e=>{e.stopPropagation();if(confirm('削除しますか？'))onDel(ev.id);}} style={{background:'none',border:'none',color:'#a8a8a4',fontSize:16,cursor:'pointer',padding:'0 4px'}}>✕</button>
-                    </div>
-                  </div>
-                  {photos.length>0&&(
-                    <div style={{display:'grid',gridTemplateColumns:photos.length===1?'1fr':'repeat(3,1fr)',gap:4,marginTop:10}}>
-                      {photos.map((src,i)=><img key={i} src={src} onClick={e=>{e.stopPropagation();onPhoto(ev.id,i);}} style={{width:'100%',aspectRatio:photos.length===1?'16/9':'1',objectFit:'cover',borderRadius:6,cursor:'pointer'}}/>)}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  const dayEvs = events.filter(e => onDate(e, selStr)).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#f7f7f5',
+      minHeight: '100vh',
+      paddingBottom: 100,
+      width: '100%',
+      boxSizing: 'border-box',
+      overflowX: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff',
+      padding: '20px 16px 16px',
+      borderBottom: '1px solid #e8e8e4',
+      boxSizing: 'border-box',
+      width: '100%'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'flex-end',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 42,
+      fontWeight: 700,
+      lineHeight: 1,
+      color: isToday ? '#2d6a4f' : isWeekend ? d.getDay() === 0 ? '#c0392b' : '#2980b9' : '#1a1a18'
+    }
+  }, d.getDate()), /*#__PURE__*/React.createElement("div", {
+    style: {
+      paddingBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: '#6b6b67',
+      fontWeight: 500
+    }
+  }, d.getFullYear(), "\u5E74", d.getMonth() + 1, "\u6708 ", wday, "\u66DC\u65E5"), holiday && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#c0392b',
+      marginTop: 2
+    }
+  }, "\uD83C\uDF8C ", holiday), isToday && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#2d6a4f',
+      fontWeight: 600,
+      marginTop: 2
+    }
+  }, "\u4ECA\u65E5"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      fontSize: 11,
+      color: '#a8a8a4',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 4
+    }
+  })), dayEvs.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '48px 20px',
+      textAlign: 'center',
+      color: '#a8a8a4',
+      fontSize: 14
+    }
+  }, "\u3053\u306E\u65E5\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, dayEvs.map(ev => {
+    const recurLbl = recurrenceLabel(ev);
+    const photos = ev.photos || (ev.photo ? [ev.photo] : []);
+    const canMove = !ev.recurrence || ev.recurrence === 'none';
+    return /*#__PURE__*/React.createElement("div", {
+      key: ev.id,
+      style: {
+        background: '#fff',
+        marginBottom: 1,
+        borderLeft: `4px solid ${ev.color || '#2d6a4f'}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => onEdit(ev),
+      style: {
+        padding: '14px 16px',
+        cursor: 'pointer'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 16,
+        fontWeight: 500,
+        color: '#1a1a18'
+      }
+    }, ev.title), ev.time && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: '#6b6b67',
+        marginTop: 3
+      }
+    }, "\uD83D\uDD50 ", ev.time), recurLbl && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#a8a8a4',
+        marginTop: 3
+      }
+    }, "\uD83D\uDD01 ", recurLbl), ev.memo && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: '#6b6b67',
+        marginTop: 3
+      }
+    }, "\uD83D\uDCDD ", ev.memo)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 6,
+        alignItems: 'center',
+        marginLeft: 8
+      }
+    }, canMove && /*#__PURE__*/React.createElement("button", {
+      onClick: e => {
+        e.stopPropagation();
+        onMoveStart(ev);
+      },
+      style: {
+        background: '#2d6a4f',
+        border: 'none',
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: 600,
+        cursor: 'pointer',
+        padding: '4px 10px',
+        borderRadius: 6
+      }
+    }, "\u79FB\u52D5"), /*#__PURE__*/React.createElement("button", {
+      onClick: e => {
+        e.stopPropagation();
+        if (confirm('削除しますか？')) onDel(ev.id);
+      },
+      style: {
+        background: 'none',
+        border: 'none',
+        color: '#a8a8a4',
+        fontSize: 16,
+        cursor: 'pointer',
+        padding: '0 4px'
+      }
+    }, "\u2715"))), photos.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: photos.length === 1 ? '1fr' : 'repeat(3,1fr)',
+        gap: 4,
+        marginTop: 10
+      }
+    }, photos.map((src, i) => /*#__PURE__*/React.createElement("img", {
+      key: i,
+      src: src,
+      onClick: e => {
+        e.stopPropagation();
+        onPhoto(ev.id, i);
+      },
+      style: {
+        width: '100%',
+        aspectRatio: photos.length === 1 ? '16/9' : '1',
+        objectFit: 'cover',
+        borderRadius: 6,
+        cursor: 'pointer'
+      }
+    })))));
+  })));
 }
-
-function ListView({events, todayStr, onEdit}) {
+function ListView(_ref7) {
+  let events = _ref7.events,
+    todayStr = _ref7.todayStr,
+    onEdit = _ref7.onEdit;
   // 今日以降の予定を日付順に並べる
-  const sorted = [...events]
-    .filter(ev => {
-      const d = ev.startDate || ev.date;
-      return d >= todayStr;
-    })
-    .sort((a, b) => {
-      const da = a.startDate || a.date;
-      const db = b.startDate || b.date;
-      if (da !== db) return da.localeCompare(db);
-      return (a.time || '99:99').localeCompare(b.time || '99:99');
-    });
+  const sorted = [...events].filter(ev => {
+    const d = ev.startDate || ev.date;
+    return d >= todayStr;
+  }).sort((a, b) => {
+    const da = a.startDate || a.date;
+    const db = b.startDate || b.date;
+    if (da !== db) return da.localeCompare(db);
+    return (a.time || '99:99').localeCompare(b.time || '99:99');
+  });
 
   // 日付ごとにグループ化
   const grouped = {};
@@ -650,105 +1712,313 @@ function ListView({events, todayStr, onEdit}) {
   const today = new Date(todayStr + 'T12:00:00');
   events.filter(ev => ev.recurrence && ev.recurrence !== 'none').forEach(ev => {
     for (let i = 0; i <= 30; i++) {
-      const d = new Date(today); d.setDate(d.getDate() + i);
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
       const ds = toDS(d);
       if (ds < (ev.startDate || ev.date)) continue;
       if (matchesRecurrence(ev, ds)) {
         if (!grouped[ds]) grouped[ds] = [];
         if (!grouped[ds].find(e => e.id === ev.id)) {
-          grouped[ds].push({...ev, _displayDate: ds});
+          grouped[ds].push({
+            ...ev,
+            _displayDate: ds
+          });
         }
       }
     }
   });
-
   const days = Object.keys(grouped).sort();
-
-  const fmtDay = (ds) => {
+  const fmtDay = ds => {
     const d = new Date(ds + 'T12:00:00');
-    const weekdays = ['日','月','火','水','木','金','土'];
-    const m = d.getMonth() + 1, day = d.getDate(), w = weekdays[d.getDay()];
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    const m = d.getMonth() + 1,
+      day = d.getDate(),
+      w = weekdays[d.getDay()];
     const isToday = ds === todayStr;
     return `${m}月${day}日（${w}）${isToday ? ' 今日' : ''}`;
   };
-
   if (days.length === 0) {
-    return (
-      <div style={{background:'#fff',marginTop:6,padding:'40px 16px',textAlign:'center',color:'#a8a8a4',fontSize:13}}>
-        今後の予定はありません
-      </div>
-    );
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: '#fff',
+        marginTop: 6,
+        padding: '40px 16px',
+        textAlign: 'center',
+        color: '#a8a8a4',
+        fontSize: 13
+      }
+    }, "\u4ECA\u5F8C\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093");
   }
-
-  return (
-    <div style={{background:'#f7f7f5',minHeight:'60vh',paddingBottom:90}}>
-      {days.map(ds => (
-        <div key={ds}>
-          <div style={{padding:'14px 16px 6px',background:'#f7f7f5'}}>
-            <span style={{fontSize:13,fontWeight:600,color: ds===todayStr?'#2d6a4f':'#6b6b67'}}>{fmtDay(ds)}</span>
-          </div>
-          <div style={{background:'#fff',borderTop:'1px solid #e8e8e4',borderBottom:'1px solid #e8e8e4'}}>
-            {grouped[ds].map((ev, idx) => {
-              const recurLbl = recurrenceLabel(ev);
-              return (
-                <div key={ev.id + ds} onClick={()=>onEdit(ev)}
-                  style={{display:'flex',alignItems:'stretch',padding:'12px 16px',borderBottom:idx<grouped[ds].length-1?'1px solid #f2f2ef':'none',cursor:'pointer',gap:12}}>
-                  <div style={{width:3,borderRadius:2,background:ev.color||'#2d6a4f',flexShrink:0}}/>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:15,fontWeight:500,color:'#1a1a18'}}>{ev.title}</div>
-                    {ev.time && <div style={{fontSize:12,color:'#6b6b67',marginTop:2}}>{ev.time}</div>}
-                    {recurLbl && <div style={{fontSize:11,color:'#a8a8a4',marginTop:2}}>🔁 {recurLbl}</div>}
-                    {ev.memo && <div style={{fontSize:12,color:'#a8a8a4',marginTop:2}}>{ev.memo}</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#f7f7f5',
+      minHeight: '60vh',
+      paddingBottom: 90
+    }
+  }, days.map(ds => /*#__PURE__*/React.createElement("div", {
+    key: ds
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '14px 16px 6px',
+      background: '#f7f7f5'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: ds === todayStr ? '#2d6a4f' : '#6b6b67'
+    }
+  }, fmtDay(ds))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff',
+      borderTop: '1px solid #e8e8e4',
+      borderBottom: '1px solid #e8e8e4'
+    }
+  }, grouped[ds].map((ev, idx) => {
+    const recurLbl = recurrenceLabel(ev);
+    return /*#__PURE__*/React.createElement("div", {
+      key: ev.id + ds,
+      onClick: () => onEdit(ev),
+      style: {
+        display: 'flex',
+        alignItems: 'stretch',
+        padding: '12px 16px',
+        borderBottom: idx < grouped[ds].length - 1 ? '1px solid #f2f2ef' : 'none',
+        cursor: 'pointer',
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 3,
+        borderRadius: 2,
+        background: ev.color || '#2d6a4f',
+        flexShrink: 0
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 15,
+        fontWeight: 500,
+        color: '#1a1a18'
+      }
+    }, ev.title), ev.time && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#6b6b67',
+        marginTop: 2
+      }
+    }, ev.time), recurLbl && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#a8a8a4',
+        marginTop: 2
+      }
+    }, "\uD83D\uDD01 ", recurLbl), ev.memo && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: '#a8a8a4',
+        marginTop: 2
+      }
+    }, ev.memo)));
+  })))));
 }
-
-function MoveModal({ev, onMove, onClose}) {
-  const [newDate, setNewDate] = useState(ev.startDate || ev.date);
-  return (
-    <div onClick={onClose} style={{position:'fixed',left:0,top:0,bottom:0,background:'rgba(0,0,0,.4)',display:'flex',alignItems:'flex-end',zIndex:300,width:'100vw',maxWidth:'100vw'}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:'18px 18px 0 0',padding:'20px 14px 32px',width:'100%',maxWidth:'100vw',margin:'0 auto',boxSizing:'border-box',overflowX:'hidden'}}>
-        <div style={{width:32,height:3,background:'#e8e8e4',borderRadius:2,margin:'0 auto 10px'}}/>
-        <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>予定を移動</div>
-        <div style={{fontSize:13,color:'#6b6b67',marginBottom:20}}>「{ev.title}」の移動先を選んでください</div>
-        <label style={{fontSize:10,color:'#a8a8a4',fontWeight:500,letterSpacing:0.5,textTransform:'uppercase',display:'block',marginBottom:6}}>移動先の日付</label>
-        <input
-          type="date"
-          value={newDate}
-          onChange={e=>setNewDate(e.target.value)}
-          style={{width:'100%',padding:'12px 14px',border:'1.5px solid #e8e8e4',borderRadius:8,fontSize:16,fontFamily:'inherit',background:'#fff',color:'#1a1a18',outline:'none',marginBottom:20}}
-        />
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-          <button onClick={onClose} style={{padding:13,borderRadius:8,fontSize:14,fontWeight:500,border:'none',cursor:'pointer',background:'#f2f2ef',color:'#6b6b67'}}>キャンセル</button>
-          <button onClick={()=>onMove(newDate)} style={{padding:13,borderRadius:8,fontSize:14,fontWeight:500,border:'none',cursor:'pointer',background:'#2d6a4f',color:'#fff'}}>移動する</button>
-        </div>
-      </div>
-    </div>
-  );
+function MoveModal(_ref8) {
+  let ev = _ref8.ev,
+    onMove = _ref8.onMove,
+    onClose = _ref8.onClose;
+  const _useState37 = useState(ev.startDate || ev.date),
+    _useState38 = _slicedToArray(_useState37, 2),
+    newDate = _useState38[0],
+    setNewDate = _useState38[1];
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: onClose,
+    style: {
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,.4)',
+      display: 'flex',
+      alignItems: 'flex-end',
+      zIndex: 300,
+      width: '100vw',
+      maxWidth: '100vw'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      background: '#fff',
+      borderRadius: '18px 18px 0 0',
+      padding: '20px 14px 32px',
+      width: '100%',
+      maxWidth: '100vw',
+      margin: '0 auto',
+      boxSizing: 'border-box',
+      overflowX: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 32,
+      height: 3,
+      background: '#e8e8e4',
+      borderRadius: 2,
+      margin: '0 auto 10px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 600,
+      marginBottom: 6
+    }
+  }, "\u4E88\u5B9A\u3092\u79FB\u52D5"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#6b6b67',
+      marginBottom: 20
+    }
+  }, "\u300C", ev.title, "\u300D\u306E\u79FB\u52D5\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044"), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 10,
+      color: '#a8a8a4',
+      fontWeight: 500,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+      display: 'block',
+      marginBottom: 6
+    }
+  }, "\u79FB\u52D5\u5148\u306E\u65E5\u4ED8"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: newDate,
+    onChange: e => setNewDate(e.target.value),
+    style: {
+      width: '100%',
+      padding: '12px 14px',
+      border: '1.5px solid #e8e8e4',
+      borderRadius: 8,
+      fontSize: 16,
+      fontFamily: 'inherit',
+      background: '#fff',
+      color: '#1a1a18',
+      outline: 'none',
+      marginBottom: 20
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: {
+      padding: 13,
+      borderRadius: 8,
+      fontSize: 14,
+      fontWeight: 500,
+      border: 'none',
+      cursor: 'pointer',
+      background: '#f2f2ef',
+      color: '#6b6b67'
+    }
+  }, "\u30AD\u30E3\u30F3\u30BB\u30EB"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => onMove(newDate),
+    style: {
+      padding: 13,
+      borderRadius: 8,
+      fontSize: 14,
+      fontWeight: 500,
+      border: 'none',
+      cursor: 'pointer',
+      background: '#2d6a4f',
+      color: '#fff'
+    }
+  }, "\u79FB\u52D5\u3059\u308B"))));
 }
-
-function PhModal({events,state,setState,onClose}){
-  const ev=events.find(e=>e.id===state.eid);
-  const photos=ev?(ev.photos||(ev.photo?[ev.photo]:[])):[];
-  if(!photos.length)return null;
-  const nav=d=>{setState(p=>({...p,i:(p.i+d+photos.length)%photos.length}));};
-  return(
-    <div onClick={onClose} style={{position:'fixed',left:0,top:0,width:'100vw',height:'100vh',background:'rgba(0,0,0,.92)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:500,cursor:'pointer'}}>
-      {photos.length>1&&<button onClick={e=>{e.stopPropagation();nav(-1);}} style={{position:'absolute',left:10,background:'rgba(255,255,255,.15)',color:'#fff',fontSize:26,padding:'6px 12px',borderRadius:8,border:'none',cursor:'pointer',zIndex:1}}>‹</button>}
-      <img src={photos[state.i]} style={{maxWidth:'95vw',maxHeight:'90vh',objectFit:'contain',borderRadius:8}}/>
-      {photos.length>1&&<button onClick={e=>{e.stopPropagation();nav(1);}} style={{position:'absolute',right:10,background:'rgba(255,255,255,.15)',color:'#fff',fontSize:26,padding:'6px 12px',borderRadius:8,border:'none',cursor:'pointer',zIndex:1}}>›</button>}
-      {photos.length>1&&<div style={{position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',color:'rgba(255,255,255,.7)',fontSize:12}}>{state.i+1} / {photos.length}</div>}
-    </div>
-  );
+function PhModal(_ref9) {
+  let events = _ref9.events,
+    state = _ref9.state,
+    setState = _ref9.setState,
+    onClose = _ref9.onClose;
+  const ev = events.find(e => e.id === state.eid);
+  const photos = ev ? ev.photos || (ev.photo ? [ev.photo] : []) : [];
+  if (!photos.length) return null;
+  const nav = d => {
+    setState(p => ({
+      ...p,
+      i: (p.i + d + photos.length) % photos.length
+    }));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: onClose,
+    style: {
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(0,0,0,.92)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 500,
+      cursor: 'pointer'
+    }
+  }, photos.length > 1 && /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      nav(-1);
+    },
+    style: {
+      position: 'absolute',
+      left: 10,
+      background: 'rgba(255,255,255,.15)',
+      color: '#fff',
+      fontSize: 26,
+      padding: '6px 12px',
+      borderRadius: 8,
+      border: 'none',
+      cursor: 'pointer',
+      zIndex: 1
+    }
+  }, "\u2039"), /*#__PURE__*/React.createElement("img", {
+    src: photos[state.i],
+    style: {
+      maxWidth: '95vw',
+      maxHeight: '90vh',
+      objectFit: 'contain',
+      borderRadius: 8
+    }
+  }), photos.length > 1 && /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      nav(1);
+    },
+    style: {
+      position: 'absolute',
+      right: 10,
+      background: 'rgba(255,255,255,.15)',
+      color: '#fff',
+      fontSize: 26,
+      padding: '6px 12px',
+      borderRadius: 8,
+      border: 'none',
+      cursor: 'pointer',
+      zIndex: 1
+    }
+  }, "\u203A"), photos.length > 1 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      bottom: 16,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      color: 'rgba(255,255,255,.7)',
+      fontSize: 12
+    }
+  }, state.i + 1, " / ", photos.length));
 }
-
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
 </script>
 </body>
