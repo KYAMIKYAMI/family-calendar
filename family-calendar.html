@@ -5,2342 +5,914 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="家族カレンダー">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2d6a4f">
 <title>家族カレンダー</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: #f7f7f5; }
-input, select, textarea { font-size: 16px !important; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,Hiragino Sans,sans-serif;background:#f7f7f5;color:#1a1a18;}
+input,select,textarea,button{font-family:inherit;font-size:16px;}
 </style>
 </head>
 <body>
-<div id="root"></div>
-<div id="error-display" style="display:none;padding:20px;color:red;font-size:12px;word-break:break-all;"></div>
+<div id="app"></div>
 <script>
-window.onerror = function(msg, src, line, col, err) {
-  var d = document.getElementById('error-display');
-  d.style.display = 'block';
-  d.innerText = 'ERROR: ' + msg + ' (line:' + line + ') ' + (err ? err.stack : '');
-};
-</script>
-<script>
-var _useState = React.useState, _useRef = React.useRef, _useCallback = React.useCallback, _useEffect = React.useEffect;
-var useState = _useState, useRef = _useRef, useCallback = _useCallback, useEffect = _useEffect;
-function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
-function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
-function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t.return && (u = t.return(), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
-// 日本の祝日データ（固定祝日 + ハッピーマンデー計算）
-function getJapaneseHolidays(year) {
-  const holidays = {};
-  const add = function (m, d, name) {
-    holidays["".concat(year, "-").concat(String(m).padStart(2, '0'), "-").concat(String(d).padStart(2, '0'))] = name;
-  };
+// ========== データ ==========
+var SK = 'fc_ev1';
+var AC = '#2d6a4f';
+var ACL = '#e8f5ee';
+var COLORS = ['#2d6a4f','#e67e22','#2980b9','#c0392b','#8e44ad'];
+var WEEK_H = 62;
+var VISIBLE_WEEKS = 6;
 
-  // 固定祝日
-  add(1, 1, '元日');
-  add(2, 11, '建国記念の日');
-  add(2, 23, '天皇誕生日');
-  add(4, 29, '昭和の日');
-  add(5, 3, '憲法記念日');
-  add(5, 4, 'みどりの日');
-  add(5, 5, 'こどもの日');
-  add(8, 11, '山の日');
-  add(11, 3, '文化の日');
-  add(11, 23, '勤労感謝の日');
+function toDS(d){
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function pad(n){return String(n).padStart(2,'0');}
+function addDays(d,n){var r=new Date(d);r.setDate(r.getDate()+n);return r;}
+function parseDS(s){return new Date(s+'T12:00:00');}
 
-  // ハッピーマンデー
-  const nthMonday = function (m, n) {
-    let d = new Date(year, m - 1, 1);
-    let count = 0;
-    while (true) {
-      if (d.getDay() === 1) {
-        count++;
-        if (count === n) return d.getDate();
-      }
-      d.setDate(d.getDate() + 1);
-    }
-  };
-  add(1, nthMonday(1, 2), '成人の日');
-  add(7, nthMonday(7, 3), '海の日');
-  add(9, nthMonday(9, 3), '敬老の日');
-  add(10, nthMonday(10, 2), 'スポーツの日');
-
-  // 春分の日（簡易計算）
-  const shunbun = Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
-  add(3, shunbun, '春分の日');
-
-  // 秋分の日（簡易計算）
-  const shubun = Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
-  add(9, shubun, '秋分の日');
-
-  // 振替休日の計算
-  const keys = Object.keys(holidays).sort();
-  keys.forEach(function (key) {
-    const d = new Date(key + 'T12:00:00');
-    if (d.getDay() === 0) {
-      // 日曜なら翌日が振替
-      const next = new Date(d);
-      next.setDate(next.getDate() + 1);
-      const nextKey = "".concat(next.getFullYear(), "-").concat(String(next.getMonth() + 1).padStart(2, '0'), "-").concat(String(next.getDate()).padStart(2, '0'));
-      if (!holidays[nextKey]) holidays[nextKey] = '振替休日';
-    }
-  });
-
-  // 国民の休日（祝日に挟まれた平日）
-  const allKeys = Object.keys(holidays).sort();
-  allKeys.forEach(function (key) {
-    const d = new Date(key + 'T12:00:00');
-    const prev = new Date(d);
-    prev.setDate(prev.getDate() - 1);
-    const next2 = new Date(d);
-    next2.setDate(next2.getDate() + 1);
-    const fmt = function (x) {
-      return "".concat(x.getFullYear(), "-").concat(String(x.getMonth() + 1).padStart(2, '0'), "-").concat(String(x.getDate()).padStart(2, '0'));
-    };
-    if (holidays[fmt(prev)] && holidays[fmt(next2)] && !holidays[key]) {
-      if (d.getDay() !== 0) holidays[key] = '国民の休日';
-    }
-  });
-  return holidays;
+function loadEvents(){
+  try{return JSON.parse(localStorage.getItem(SK)||'[]');}catch(e){return [];}
+}
+function saveEvents(evs){
+  try{localStorage.setItem(SK,JSON.stringify(evs));}catch(e){}
 }
 
-// 祝日キャッシュ
-const holidayCache = {};
-function getHoliday(dateStr) {
-  const year = parseInt(dateStr.slice(0, 4));
-  if (!holidayCache[year]) holidayCache[year] = getJapaneseHolidays(year);
-  return holidayCache[year][dateStr] || null;
+// ========== 祝日 ==========
+var holidayCache={};
+function getHolidays(year){
+  if(holidayCache[year])return holidayCache[year];
+  var h={};
+  function add(m,d,name){h[year+'-'+pad(m)+'-'+pad(d)]=name;}
+  add(1,1,'元日');add(2,11,'建国記念の日');add(2,23,'天皇誕生日');
+  add(4,29,'昭和の日');add(5,3,'憲法記念日');add(5,4,'みどりの日');
+  add(5,5,'こどもの日');add(8,11,'山の日');add(11,3,'文化の日');add(11,23,'勤労感謝の日');
+  function nthMon(m,n){var d=new Date(year,m-1,1),c=0;while(true){if(d.getDay()===1){c++;if(c===n)return d.getDate();}d.setDate(d.getDate()+1);}}
+  add(1,nthMon(1,2),'成人の日');add(7,nthMon(7,3),'海の日');
+  add(9,nthMon(9,3),'敬老の日');add(10,nthMon(10,2),'スポーツの日');
+  var sp=Math.floor(20.8431+0.242194*(year-1980)-Math.floor((year-1980)/4));
+  var sa=Math.floor(23.2488+0.242194*(year-1980)-Math.floor((year-1980)/4));
+  add(3,sp,'春分の日');add(9,sa,'秋分の日');
+  var keys=Object.keys(h).sort();
+  keys.forEach(function(k){
+    var d=parseDS(k);
+    if(d.getDay()===0){
+      var nx=addDays(d,1),nk=toDS(nx);
+      if(!h[nk])h[nk]='振替休日';
+    }
+  });
+  holidayCache[year]=h;
+  return h;
 }
-const COLORS = ['#2d6a4f', '#e67e22', '#2980b9', '#c0392b', '#8e44ad'];
-const SK = 'fc_ev1';
-const AC = '#2d6a4f';
-const ACL = '#e8f4ee';
-const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
-const RECURRENCE_LABELS = {
-  none: 'なし',
-  weekly: '毎週',
-  monthly: '毎月',
-  yearly: '毎年'
+function getHoliday(ds){
+  var y=parseInt(ds.slice(0,4));
+  return getHolidays(y)[ds]||null;
+}
+
+// ========== 状態 ==========
+var state={
+  events: loadEvents(),
+  sel: new Date(),
+  viewMode: 'calendar', // calendar|daily|list
+  modal: null, // null|add|edit|move
+  editEv: null,
+  moveEv: null,
+  anchorWeek: null,
+  translateY: 0,
+  dispMonth: new Date().getMonth(),
+  dispYear: new Date().getFullYear(),
+  dailyKey: 0,
 };
-const WEEK_H = 62;
-const VISIBLE_WEEKS = 6;
-const BUFFER_WEEKS = 6;
-const TOTAL_WEEKS = VISIBLE_WEEKS + BUFFER_WEEKS * 2;
-function loadEv() {
-  try {
-    return JSON.parse(localStorage.getItem(SK) || '[]');
-  } catch {
-    return [];
+
+// anchorWeekを今週の日曜に設定
+(function(){
+  var t=new Date(); t.setHours(0,0,0,0);
+  var dow=t.getDay();
+  var sun=addDays(t,-dow);
+  var buf=4;
+  state.anchorWeek=addDays(sun,-buf*7);
+  state.translateY=-(buf*WEEK_H);
+})();
+
+var todayStr=toDS(new Date());
+
+// ========== レンダリング ==========
+function render(){
+  var app=document.getElementById('app');
+  app.innerHTML='';
+  var wrap=el('div',{style:'font-family:-apple-system,Hiragino Sans,sans-serif;background:#f7f7f5;min-height:100vh;max-width:480px;margin:0 auto;'});
+  app.appendChild(wrap);
+  renderHeader(wrap);
+  if(state.viewMode==='daily'){
+    renderDaily(wrap);
+  } else if(state.viewMode==='list'){
+    renderList(wrap);
+  } else {
+    renderCalendar(wrap);
+    renderDayEvents(wrap);
   }
+  renderFAB(wrap);
+  if(state.modal==='add'||state.modal==='edit') renderEventModal(wrap);
+  if(state.modal==='move') renderMoveModal(wrap);
+  if(state.modal==='reminder') renderReminderModal(wrap);
 }
-function saveEv(l) {
-  localStorage.setItem(SK, JSON.stringify(l));
+
+function el(tag,attrs,children){
+  var e=document.createElement(tag);
+  if(attrs){
+    Object.keys(attrs).forEach(function(k){
+      if(k==='style'&&typeof attrs[k]==='string') e.style.cssText=attrs[k];
+      else if(k==='style'&&typeof attrs[k]==='object') Object.assign(e.style,attrs[k]);
+      else if(k.startsWith('on')&&typeof attrs[k]==='function') e.addEventListener(k.slice(2).toLowerCase(),attrs[k]);
+      else e.setAttribute(k,attrs[k]);
+    });
+  }
+  if(children){
+    if(typeof children==='string') e.textContent=children;
+    else if(Array.isArray(children)) children.forEach(function(c){if(c)e.appendChild(typeof c==='string'?document.createTextNode(c):c);});
+    else e.appendChild(children);
+  }
+  return e;
 }
-function toDS(d) {
-  return "".concat(d.getFullYear(), "-").concat(String(d.getMonth() + 1).padStart(2, '0'), "-").concat(String(d.getDate()).padStart(2, '0'));
+
+function txt(s){return document.createTextNode(s);}
+
+// ========== ヘッダー ==========
+function renderHeader(wrap){
+  var h=el('div',{style:'background:#fff;border-bottom:1px solid #e8e8e4;padding:13px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;'});
+  var left=el('span',{style:'font-size:15px;font-weight:600;'},'📅 家族カレンダー');
+  var right=el('div',{style:'display:flex;gap:8px;align-items:center;'});
+  if(state.viewMode==='daily'){
+    var backBtn=el('button',{style:'background:#f2f2ef;border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:#6b6b67;cursor:pointer;',onclick:function(){state.viewMode='calendar';render();}});
+    backBtn.textContent='← カレンダー';
+    right.appendChild(backBtn);
+  } else {
+    var listBtn=el('button',{style:'background:'+(state.viewMode==='list'?AC:'#f2f2ef')+';border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:'+(state.viewMode==='list'?'#fff':'#6b6b67')+';cursor:pointer;',onclick:function(){state.viewMode=state.viewMode==='list'?'calendar':'list';render();}});
+    listBtn.textContent=state.viewMode==='list'?'カレンダー':'リスト';
+    right.appendChild(listBtn);
+    var todayBtn=el('button',{style:'background:#f2f2ef;border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:#6b6b67;cursor:pointer;',onclick:function(){
+      var t=new Date(); t.setHours(0,0,0,0);
+      state.sel=t;
+      var dow=t.getDay();
+      var sun=addDays(t,-dow);
+      var buf=4;
+      state.anchorWeek=addDays(sun,-buf*7);
+      state.translateY=-(buf*WEEK_H);
+      state.viewMode='calendar';
+      render();
+    }});
+    todayBtn.textContent='今日';
+    right.appendChild(todayBtn);
+  }
+  h.appendChild(left);
+  h.appendChild(right);
+  wrap.appendChild(h);
 }
-function genId() {
-  return 'e' + Math.random().toString(36).substr(2, 8);
+
+// ========== カレンダー ==========
+function renderCalendar(wrap){
+  // 月ナビ
+  var nav=el('div',{style:'background:#fff;padding:10px 16px 6px;display:flex;align-items:center;justify-content:space-between;'});
+  var prevBtn=el('button',{style:'background:#f2f2ef;border:none;border-radius:8px;padding:5px 12px;font-size:16px;color:#6b6b67;cursor:pointer;',onclick:function(){
+    animateTo(state.translateY, snapY(state.translateY-4*WEEK_H));
+  }});
+  prevBtn.textContent='‹';
+  var monthLbl=el('span',{style:'font-size:15px;font-weight:600;'},state.dispYear+'年'+(state.dispMonth+1)+'月');
+  var nextBtn=el('button',{style:'background:#f2f2ef;border:none;border-radius:8px;padding:5px 12px;font-size:16px;color:#6b6b67;cursor:pointer;',onclick:function(){
+    animateTo(state.translateY, snapY(state.translateY+4*WEEK_H));
+  }});
+  nextBtn.textContent='›';
+  nav.appendChild(prevBtn);
+  nav.appendChild(monthLbl);
+  nav.appendChild(nextBtn);
+  wrap.appendChild(nav);
+
+  // 曜日ヘッダー
+  var days=['日','月','火','水','木','金','土'];
+  var dayHdr=el('div',{style:'background:#fff;display:grid;grid-template-columns:repeat(7,1fr);text-align:center;padding:4px 6px;border-bottom:1px solid #e8e8e4;width:100%;'});
+  days.forEach(function(d,i){
+    var c=i===0?'#c0392b':i===6?'#2980b9':'#6b6b67';
+    dayHdr.appendChild(el('div',{style:'font-size:10px;font-weight:600;color:'+c+';padding:2px 0;'},d));
+  });
+  wrap.appendChild(dayHdr);
+
+  // カレンダーグリッド
+  var grid=el('div',{style:'background:#fff;height:'+(WEEK_H*VISIBLE_WEEKS)+'px;overflow:hidden;width:100%;position:relative;'});
+  var inner=el('div',{style:'position:absolute;top:0;left:0;width:100%;transform:translateY('+state.translateY+'px);will-change:transform;'});
+
+  var totalWeeks=VISIBLE_WEEKS+8*2;
+  for(var wi=0;wi<totalWeeks;wi++){
+    inner.appendChild(renderWeekRow(wi));
+  }
+  grid.appendChild(inner);
+  wrap.appendChild(grid);
+
+  // タッチイベント
+  setupCalTouch(grid, inner);
 }
-function addDays(d, n) {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
+
+function renderWeekRow(wi){
+  var row=el('div',{style:'display:flex;flex-direction:column;height:'+WEEK_H+'px;border-bottom:1px solid #f2f2ef;overflow:hidden;width:100%;'});
+  var cells=el('div',{style:'display:grid;grid-template-columns:repeat(7,1fr);padding:0 4px;width:100%;'});
+  var selStr=toDS(state.sel);
+
+  for(var di=0;di<7;di++){
+    var date=addDays(addDays(state.anchorWeek,wi*7),di);
+    var ds=toDS(date);
+    var isToday=ds===todayStr;
+    var isSel=ds===selStr;
+    var isOther=date.getMonth()!==state.dispMonth;
+    var holiday=getHoliday(ds);
+    var isHoliday=!!holiday;
+    var col=di===0||isHoliday?'#c0392b':di===6?'#2980b9':'#1a1a18';
+    if(isOther)col='#c8c8c4';
+
+    var cell=el('div',{style:'display:flex;flex-direction:column;align-items:center;padding:2px 1px;cursor:pointer;border-radius:6px;background:'+(isSel&&!isToday?ACL:'transparent')+';'});
+    cell.dataset.date=ds;
+    cell.dataset.wi=wi;
+    cell.dataset.di=di;
+
+    var numSpan=el('span',{style:'font-size:11px;line-height:20px;pointer-events:none;color:'+(isToday?'#fff':col)+';background:'+(isToday?AC:'transparent')+';border-radius:50%;width:'+(isToday?'20px':'auto')+';height:'+(isToday?'20px':'auto')+';display:'+(isToday?'flex':'inline')+';align-items:center;justify-content:center;font-weight:'+(isToday?'600':'400')+';'});
+    numSpan.textContent=date.getDate();
+    cell.appendChild(numSpan);
+
+    if(!isOther&&holiday){
+      var hSpan=el('span',{style:'font-size:7px;color:#c0392b;line-height:1;text-align:center;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:none;'},holiday);
+      cell.appendChild(hSpan);
+    }
+
+    cells.appendChild(cell);
+  }
+  row.appendChild(cells);
+
+  // 予定バー
+  var barsArea=renderEventBars(wi);
+  row.appendChild(barsArea);
+
+  return row;
 }
-function weekSunday(d) {
-  const r = new Date(d);
-  r.setDate(r.getDate() - r.getDay());
-  r.setHours(0, 0, 0, 0);
-  return r;
+
+function renderEventBars(wi){
+  var area=el('div',{style:'flex:1;overflow:hidden;padding:0 2px;'});
+  var selStr=toDS(state.sel);
+  var weekStart=addDays(state.anchorWeek,wi*7);
+  var weekEnd=addDays(weekStart,6);
+  var ws=toDS(weekStart), we=toDS(weekEnd);
+
+  var dayEvs=state.events.filter(function(ev){
+    var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
+    return a<=we&&b>=ws&&(!ev.recurrence||ev.recurrence==='none');
+  });
+
+  // 繰り返し予定
+  state.events.filter(function(ev){return ev.recurrence&&ev.recurrence!=='none';}).forEach(function(ev){
+    for(var i=0;i<7;i++){
+      var d=addDays(weekStart,i);
+      var ds=toDS(d);
+      if(matchRecur(ev,ds)){
+        dayEvs.push(Object.assign({},ev,{_recur:true,startDate:ds,endDate:ds}));
+      }
+    }
+  });
+
+  // レーン割り当て（最大3本）
+  var lanes=[];
+  dayEvs.forEach(function(ev){
+    var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
+    var cs=Math.max(0,Math.floor((parseDS(a)-parseDS(ws))/(86400000)));
+    var ce=Math.min(6,Math.floor((parseDS(b)-parseDS(ws))/(86400000)));
+    cs=Math.max(0,cs); ce=Math.min(6,ce);
+    var lane=-1;
+    for(var l=0;l<3;l++){
+      if(!lanes[l])lanes[l]=[];
+      var ok=true;
+      for(var x=0;x<lanes[l].length;x++){
+        if(!(ce<lanes[l][x].cs||cs>lanes[l][x].ce)){ok=false;break;}
+      }
+      if(ok){lane=l;break;}
+    }
+    if(lane>=0){
+      if(!lanes[lane])lanes[lane]=[];
+      lanes[lane].push({ev:ev,cs:cs,ce:ce});
+    }
+  });
+
+  for(var l=0;l<Math.min(3,lanes.length);l++){
+    if(!lanes[l])continue;
+    var laneEl=el('div',{style:'display:grid;grid-template-columns:repeat(7,1fr);height:11px;margin-bottom:1px;'});
+    var used=new Set();
+    lanes[l].forEach(function(item){
+      var rL=item.cs===0&&parseDS(item.ev.startDate||item.ev.date)<parseDS(ws);
+      var rR=item.ce===6&&parseDS(item.ev.endDate||item.ev.date||item.ev.startDate)>parseDS(we);
+      var barStyle='height:10px;line-height:10px;font-size:8px;color:#fff;padding:0 3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;background:'+(item.ev.color||AC)+';grid-column:'+(item.cs+1)+'/'+(item.ce+2)+';border-radius:'+(rL?'0':'3px')+' '+(rR?'0':'3px')+' '+(rR?'0':'3px')+' '+(rL?'0':'3px')+';margin-left:'+(rL?'0':'1px')+';margin-right:'+(rR?'0':'1px')+';font-weight:500;opacity:'+(item.ev._recur?0.85:1)+';';
+      var bar=el('div',{style:barStyle});
+      bar.dataset.date=toDS(addDays(weekStart,item.cs));
+      if(!rL||item.cs===0) bar.textContent=(item.ev._recur?'🔁 ':'')+item.ev.title;
+      bar.addEventListener('click',function(e){
+        e.stopPropagation();
+        var ds=bar.dataset.date;
+        state.sel=parseDS(ds);
+        state.viewMode='daily';
+        state.dailyKey++;
+        render();
+      });
+      for(var x=item.cs;x<=item.ce;x++)used.add(x);
+      laneEl.appendChild(bar);
+    });
+    for(var x=0;x<7;x++){if(!used.has(x))laneEl.appendChild(el('div',{style:'grid-column:'+(x+1)+';'}));}
+    area.appendChild(laneEl);
+  }
+  return area;
 }
-function matchesRecurrence(ev, s) {
-  const d = new Date(s + 'T12:00:00'),
-    o = new Date((ev.startDate || ev.date) + 'T12:00:00');
-  if (ev.recurrence === 'weekly') return d.getDay() === o.getDay();
-  if (ev.recurrence === 'monthly') return d.getDate() === o.getDate();
-  if (ev.recurrence === 'yearly') return d.getMonth() === o.getMonth() && d.getDate() === o.getDate();
+
+function matchRecur(ev,ds){
+  var base=ev.startDate||ev.date;
+  if(ds<base)return false;
+  var bd=parseDS(base), td=parseDS(ds);
+  if(ev.recurrence==='weekly') return bd.getDay()===td.getDay();
+  if(ev.recurrence==='monthly') return bd.getDate()===td.getDate();
+  if(ev.recurrence==='yearly') return bd.getDate()===td.getDate()&&bd.getMonth()===td.getMonth();
   return false;
 }
-function onDate(ev, s) {
-  const start = ev.startDate || ev.date;
-  if (ev.recurrence && ev.recurrence !== 'none') return s >= start && matchesRecurrence(ev, s);
-  return start <= s && s <= (ev.endDate || ev.date || start);
-}
-function resizeImg(file, cb) {
-  const r = new FileReader();
-  r.onload = function (e) {
-    const img = new Image();
-    img.onload = function () {
-      const M = 800,
-        c = document.createElement('canvas');
-      let w = img.width,
-        h = img.height;
-      if (w > h && w > M) {
-        h = h * M / w;
-        w = M;
-      } else if (h > M) {
-        w = w * M / h;
-        h = M;
-      }
-      c.width = w;
-      c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      cb(c.toDataURL('image/jpeg', .7));
-    };
-    img.src = e.target.result;
-  };
-  r.readAsDataURL(file);
-}
-function recurrenceLabel(ev) {
-  if (!ev.recurrence || ev.recurrence === 'none') return null;
-  const o = new Date((ev.startDate || ev.date) + 'T12:00:00');
-  if (ev.recurrence === 'weekly') return "\u6BCE\u9031".concat(WEEKDAYS[o.getDay()], "\u66DC\u65E5");
-  if (ev.recurrence === 'monthly') return "\u6BCE\u6708".concat(o.getDate(), "\u65E5");
-  if (ev.recurrence === 'yearly') return "\u6BCE\u5E74".concat(o.getMonth() + 1, "\u6708").concat(o.getDate(), "\u65E5");
-}
-function App() {
-  const _useState = useState(loadEv),
-    _useState2 = _slicedToArray(_useState, 2),
-    events = _useState2[0],
-    setEvents = _useState2[1];
-  const _useState3 = useState(function () {
-      return new Date();
-    }),
-    _useState4 = _slicedToArray(_useState3, 2),
-    sel = _useState4[0],
-    setSel = _useState4[1];
-  const _useState5 = useState(null),
-    _useState6 = _slicedToArray(_useState5, 2),
-    modal = _useState6[0],
-    setModal = _useState6[1]; // 'add' | 'edit'
-  const _useState7 = useState(null),
-    _useState8 = _slicedToArray(_useState7, 2),
-    editEv = _useState8[0],
-    setEditEv = _useState8[1];
-  const _useState9 = useState({
-      eid: null,
-      i: 0
-    }),
-    _useState0 = _slicedToArray(_useState9, 2),
-    phState = _useState0[0],
-    setPhState = _useState0[1];
-  const _useState1 = useState('calendar'),
-    _useState10 = _slicedToArray(_useState1, 2),
-    viewMode = _useState10[0],
-    setViewMode = _useState10[1]; // 'calendar' | 'list'
-  const _useState11 = useState('default'),
-    _useState12 = _slicedToArray(_useState11, 2),
-    notifPerm = _useState12[0],
-    setNotifPerm = _useState12[1];
-  const notifTimers = useRef([]);
-  // 通知許可リクエスト
-  useEffect(function () {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(function (p) {
-        return setNotifPerm(p);
-      });
-    } else if ('Notification' in window) {
-      setNotifPerm(Notification.permission);
-    }
-  }, []);
 
-  // 通知スケジューリング
-  useEffect(function () {
-    // 既存タイマーをクリア
-    notifTimers.current.forEach(function (t) {
-      return clearTimeout(t);
-    });
-    notifTimers.current = [];
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    const now = new Date();
-    events.forEach(function (ev) {
-      var _ev$notifMins;
-      if (!ev.time || !ev.startDate) return;
-      const notifMins = (_ev$notifMins = ev.notifMins) !== null && _ev$notifMins !== void 0 ? _ev$notifMins : 10; // デフォルト10分前
-      if (notifMins < 0) return; // 通知なし
-      const evDate = new Date("".concat(ev.startDate, "T").concat(ev.time, ":00"));
-      const notifTime = new Date(evDate.getTime() - notifMins * 60000);
-      const ms = notifTime - now;
-      if (ms > 0 && ms < 7 * 24 * 60 * 60 * 1000) {
-        // 7日以内
-        const t = setTimeout(function () {
-          new Notification("\uD83D\uDCC5 ".concat(ev.title), {
-            body: notifMins === 0 ? '予定の時間です' : "".concat(notifMins, "\u5206\u5F8C\u306B\u59CB\u307E\u308A\u307E\u3059"),
-            icon: '/favicon.ico'
-          });
-        }, ms);
-        notifTimers.current.push(t);
-      }
-    });
-  }, [events, notifPerm]);
-  const changeViewMode = function (mode) {
-    setViewMode(mode);
-    // スクロール位置とズームをリセット
-    window.scrollTo(0, 0);
-    document.documentElement.style.transform = '';
-  };
-  const _useState13 = useState(0),
-    _useState14 = _slicedToArray(_useState13, 2),
-    dailyKey = _useState14[0],
-    setDailyKey = _useState14[1]; // デイリービュー強制更新用
-  const _useState15 = useState(null),
-    _useState16 = _slicedToArray(_useState15, 2),
-    moveTarget = _useState16[0],
-    setMoveTarget = _useState16[1]; // {ev, newDate}
-  const _useState17 = useState(null),
-    _useState18 = _slicedToArray(_useState17, 2),
-    reminderEv = _useState18[0],
-    setReminderEv = _useState18[1]; // リマインダー追加候補
-  const _useState19 = useState(null),
-    _useState20 = _slicedToArray(_useState19, 2),
-    toast = _useState20[0],
-    setToast = _useState20[1];
-  const tmr = useRef(null);
-  const todayStr = toDS(new Date());
-  const selStr = toDS(sel);
-  const _useState21 = useState(function () {
-      const t = new Date();
-      return addDays(weekSunday(new Date(t.getFullYear(), t.getMonth(), 1)), -BUFFER_WEEKS * 7);
-    }),
-    _useState22 = _slicedToArray(_useState21, 2),
-    anchorWeek = _useState22[0],
-    setAnchorWeek = _useState22[1];
-  const _useState23 = useState(-(BUFFER_WEEKS * WEEK_H)),
-    _useState24 = _slicedToArray(_useState23, 2),
-    translateY = _useState24[0],
-    setTranslateY = _useState24[1];
-  const isCalDrag = useRef(false);
-  const calStartY = useRef(0);
-  const calStartTY = useRef(0);
-  const calLastY = useRef(0);
-  const calLastT = useRef(0);
-  const calVel = useRef(0);
-  const rafId = useRef(null);
-  const containerRef = useRef(null);
-  const showToast = useCallback(function (msg) {
-    setToast(msg);
-    clearTimeout(tmr.current);
-    tmr.current = setTimeout(function () {
-      return setToast(null);
-    }, 2200);
-  }, []);
-  const addEv = useCallback(function (ev) {
-    const next = [...events, {
-      ...ev,
-      id: genId()
-    }];
-    setEvents(next);
-    saveEv(next);
-    showToast('追加しました');
-  }, [events, showToast]);
-  const updateEv = useCallback(function (id, data) {
-    const next = events.map(function (e) {
-      return e.id === id ? {
-        ...e,
-        ...data
-      } : e;
-    });
-    setEvents(next);
-    saveEv(next);
-    showToast('更新しました');
-  }, [events, showToast]);
-  const delEv = useCallback(function (id) {
-    const next = events.filter(function (e) {
-      return e.id !== id;
-    });
-    setEvents(next);
-    saveEv(next);
-    showToast('削除しました');
-  }, [events, showToast]);
-  const addToReminder = function (ev) {
-    if (!ev) return;
-    const dt = ev.startDate + (ev.time ? 'T' + ev.time : '');
-    const title = encodeURIComponent(ev.title);
-    const notes = encodeURIComponent(ev.memo || '家族カレンダーより');
-    // iOSリマインダーのURLスキーム
-    const url = "x-apple-reminderkit://REMCDReminder?title=".concat(title, "&notes=").concat(notes);
-    // フォールバック：カレンダーアプリに追加
-    const calUrl = "calshow:".concat(new Date(dt).getTime() / 1000);
-    window.location.href = url;
-    setReminderEv(null);
-  };
-  const moveEv = useCallback(function (id, newDate) {
-    setEvents(function (prev) {
-      const ev = prev.find(function (e) {
-        return e.id === id;
-      });
-      if (!ev) return prev;
-      const durDays = ev.endDate && ev.startDate ? Math.round((new Date(ev.endDate + 'T12:00:00') - new Date(ev.startDate + 'T12:00:00')) / 86400000) : 0;
-      const newEnd = durDays > 0 ? toDS(addDays(new Date(newDate + 'T12:00:00'), durDays)) : newDate;
-      const next = prev.map(function (e) {
-        return e.id === id ? {
-          ...e,
-          startDate: newDate,
-          endDate: newEnd,
-          date: newDate
-        } : e;
-      });
-      saveEv(next);
-      return next;
-    });
-    showToast('移動しました ✓');
-  }, [showToast]);
-  const snapAndRecycle = function (ty) {
-    const sn = Math.round(ty / WEEK_H) * WEEK_H;
-    const tb = BUFFER_WEEKS + Math.round(sn / WEEK_H);
-    if (tb < 3) {
-      setAnchorWeek(function (p) {
-        return addDays(p, 28);
-      });
-      return sn + 4 * WEEK_H;
-    }
-    if (tb > TOTAL_WEEKS - VISIBLE_WEEKS - 3) {
-      setAnchorWeek(function (p) {
-        return addDays(p, -28);
-      });
-      return sn - 4 * WEEK_H;
-    }
-    return sn;
-  };
-  const snapRef = useRef(snapAndRecycle);
-  snapRef.current = snapAndRecycle;
-  const momentumFn = function (v0) {
-    let v = v0;
-    const step = function () {
-      if (Math.abs(v) < 0.5) {
-        setTranslateY(function (p) {
-          return snapRef.current(p);
-        });
+// ========== タッチスクロール ==========
+var calTouchState={startX:0,startY:0,startTY:0,lastY:0,lastT:0,vel:0,dragging:false,rafId:null};
+
+function setupCalTouch(grid,inner){
+  grid.addEventListener('touchstart',function(e){
+    e.preventDefault();
+    cancelAnimationFrame(calTouchState.rafId);
+    calTouchState.dragging=true;
+    calTouchState.startX=e.touches[0].clientX;
+    calTouchState.startY=e.touches[0].clientY;
+    calTouchState.startTY=state.translateY;
+    calTouchState.lastY=e.touches[0].clientY;
+    calTouchState.lastT=Date.now();
+    calTouchState.vel=0;
+  },{passive:false});
+
+  grid.addEventListener('touchmove',function(e){
+    if(!calTouchState.dragging)return;
+    e.preventDefault();
+    var y=e.touches[0].clientY;
+    var now=Date.now(), dt=now-calTouchState.lastT;
+    if(dt>0)calTouchState.vel=(y-calTouchState.lastY)/dt*16;
+    calTouchState.lastY=y;
+    calTouchState.lastT=now;
+    state.translateY=calTouchState.startTY+(y-calTouchState.startY);
+    inner.style.transform='translateY('+state.translateY+'px)';
+  },{passive:false});
+
+  grid.addEventListener('touchend',function(e){
+    if(!calTouchState.dragging)return;
+    e.preventDefault();
+    calTouchState.dragging=false;
+    var dx=Math.abs(e.changedTouches[0].clientX-calTouchState.startX);
+    var dy=Math.abs(e.changedTouches[0].clientY-calTouchState.startY);
+    if(dx<10&&dy<10){
+      // タップ：座標から日付を計算
+      var rect=grid.getBoundingClientRect();
+      var x=e.changedTouches[0].clientX, y=e.changedTouches[0].clientY;
+      var weekIdx=Math.floor((y-rect.top-state.translateY)/WEEK_H);
+      var dayIdx=Math.floor((x-rect.left)/(rect.width/7));
+      if(weekIdx>=0&&weekIdx<16+8&&dayIdx>=0&&dayIdx<7){
+        var clicked=addDays(addDays(state.anchorWeek,weekIdx*7),dayIdx);
+        var clickedStr=toDS(clicked);
+        var curSelStr=toDS(state.sel);
+        if(clickedStr===curSelStr){
+          state.viewMode='daily';
+          state.dailyKey++;
+        } else {
+          state.sel=clicked;
+        }
+        state.translateY=snapY(state.translateY);
+        render();
         return;
       }
-      v *= 0.88;
-      setTranslateY(function (p) {
-        return p + v;
-      });
-      rafId.current = requestAnimationFrame(step);
-    };
-    rafId.current = requestAnimationFrame(step);
-  };
-  const momentumRef = useRef(momentumFn);
-  momentumRef.current = momentumFn;
-  const animateTo = function (from, to) {
-    cancelAnimationFrame(rafId.current);
-    let pos = from;
-    const step = function () {
-      const d = to - pos;
-      if (Math.abs(d) < 0.8) {
-        setTranslateY(snapRef.current(to));
-        return;
-      }
-      pos += d * 0.2;
-      setTranslateY(pos);
-      rafId.current = requestAnimationFrame(step);
-    };
-    rafId.current = requestAnimationFrame(step);
-  };
-
-  // カレンダータッチ - 全てrefで最新値を参照、useEffectで毎回再登録
-  const calStateRef = useRef({});
-  calStateRef.current = {
-    translateY,
-    anchorWeek,
-    setSel,
-    setViewMode,
-    setDailyKey,
-    selStr
-  };
-  useEffect(function () {
-    const el = containerRef.current;
-    if (!el) return;
-    let startX = 0,
-      startY = 0,
-      startTY = 0,
-      startTime = 0,
-      lastY = 0,
-      lastT = 0,
-      vel = 0,
-      dragging = false;
-    const onTS = function (e) {
-      e.preventDefault();
-      cancelAnimationFrame(rafId.current);
-      dragging = true;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startTY = calStateRef.current.translateY || 0;
-      lastY = startY;
-      lastT = Date.now();
-      vel = 0;
-    };
-    const onTM = function (e) {
-      if (!dragging) return;
-      e.preventDefault();
-      const y = e.touches[0].clientY;
-      const now = Date.now(),
-        dt = now - lastT;
-      if (dt > 0) vel = (y - lastY) / dt * 16;
-      lastY = y;
-      lastT = now;
-      setTranslateY(startTY + (y - startY));
-    };
-    const onTE = function (e) {
-      if (!dragging) return;
-      e.preventDefault();
-      dragging = false;
-      const dx = Math.abs(e.changedTouches[0].clientX - startX);
-      const dy = Math.abs(e.changedTouches[0].clientY - startY);
-      const _calStateRef$current = calStateRef.current,
-        ty = _calStateRef$current.translateY,
-        aw = _calStateRef$current.anchorWeek,
-        ss = _calStateRef$current.setSel,
-        svm = _calStateRef$current.setViewMode;
-      const mom = momentumRef.current;
-      const snap = snapRef.current;
-      if (dx < 10 && dy < 10) {
-        const x = e.changedTouches[0].clientX,
-          y = e.changedTouches[0].clientY;
-        const rect = el.getBoundingClientRect();
-        const weekIdx = Math.floor((y - rect.top - ty) / WEEK_H);
-        const dayIdx = Math.floor((x - rect.left) / (rect.width / 7));
-        if (weekIdx >= 0 && weekIdx < TOTAL_WEEKS && dayIdx >= 0 && dayIdx < 7) {
-          const clicked = addDays(addDays(aw, weekIdx * 7), dayIdx);
-          const clickedStr = toDS(clicked);
-          // 現在のselStrと比較
-          const currentSelStr = calStateRef.current.selStr;
-          if (clickedStr === currentSelStr) {
-            // 同じ日を2回タップ → デイリーへ
-            svm('daily');
-            calStateRef.current.setDailyKey(function (k) {
-              return k + 1;
-            });
-          } else {
-            // 初回タップ → 日付選択のみ
-            ss(clicked);
-          }
-        }
-        setTranslateY(function (p) {
-          return snap(p);
-        });
-        return;
-      }
-      Math.abs(vel) > 2 ? mom(vel) : setTranslateY(function (p) {
-        return snap(p);
-      });
-    };
-    el.addEventListener('touchstart', onTS, {
-      passive: false
-    });
-    el.addEventListener('touchmove', onTM, {
-      passive: false
-    });
-    el.addEventListener('touchend', onTE, {
-      passive: false
-    });
-    return function () {
-      el.removeEventListener('touchstart', onTS);
-      el.removeEventListener('touchmove', onTM);
-      el.removeEventListener('touchend', onTE);
-    };
-  }, [viewMode]); // viewModeが変わるたびに再登録（daily→calendarに戻ったとき対応）
-
-  const topWeekIndex = -Math.round(translateY / WEEK_H);
-  const midWeek = addDays(addDays(anchorWeek, topWeekIndex * 7), 3 * 7);
-  const dispYear = midWeek.getFullYear(),
-    dispMonth = midWeek.getMonth();
-  const goToday = function () {
-    cancelAnimationFrame(rafId.current);
-    const t = new Date();
-    setAnchorWeek(addDays(weekSunday(new Date(t.getFullYear(), t.getMonth(), 1)), -BUFFER_WEEKS * 7));
-    setTranslateY(-(BUFFER_WEEKS * WEEK_H));
-    setSel(t);
-  };
-  const allWeeks = [];
-  for (let i = 0; i < TOTAL_WEEKS; i++) allWeeks.push([0, 1, 2, 3, 4, 5, 6].map(function (d) {
-    return addDays(addDays(anchorWeek, i * 7), d);
-  }));
-  const dayEvs = events.filter(function (e) {
-    return onDate(e, selStr);
-  }).sort(function (a, b) {
-    return (a.time || '99').localeCompare(b.time || '99');
-  });
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: '-apple-system,Hiragino Sans,sans-serif',
-      background: '#f7f7f5',
-      color: '#1a1a18',
-      maxWidth: 480,
-      margin: '0 auto',
-      minHeight: '100vh',
-      position: 'relative',
-      overflow: 'hidden'
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#fff',
-      borderBottom: '1px solid #e8e8e4',
-      padding: '13px 16px',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between'
+    if(Math.abs(calTouchState.vel)>2){
+      momentum(calTouchState.vel,inner);
+    } else {
+      state.translateY=snapY(state.translateY);
+      inner.style.transform='translateY('+state.translateY+'px)';
+      updateDispMonth();
     }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 15,
-      fontWeight: 600
-    }
-  }, "\uD83D\uDCC5 \u5BB6\u65CF\u30AB\u30EC\u30F3\u30C0\u30FC"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      alignItems: 'center'
-    }
-  }, viewMode === 'daily' && /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      return changeViewMode('calendar');
-    },
-    style: {
-      background: '#f2f2ef',
-      border: 'none',
-      borderRadius: 8,
-      padding: '5px 10px',
-      fontSize: 12,
-      color: '#6b6b67',
-      cursor: 'pointer',
-      fontWeight: 500
-    }
-  }, "\u2190 \u30AB\u30EC\u30F3\u30C0\u30FC"), viewMode !== 'daily' && /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      return changeViewMode(viewMode === 'calendar' ? 'list' : 'calendar');
-    },
-    style: {
-      background: viewMode === 'list' ? '#2d6a4f' : '#f2f2ef',
-      border: 'none',
-      borderRadius: 8,
-      padding: '5px 10px',
-      fontSize: 12,
-      color: viewMode === 'list' ? '#fff' : '#6b6b67',
-      cursor: 'pointer',
-      fontWeight: 500
-    }
-  }, viewMode === 'calendar' ? 'リスト' : 'カレンダー'), viewMode === 'calendar' && /*#__PURE__*/React.createElement("button", {
-    onClick: goToday,
-    style: {
-      background: '#f2f2ef',
-      border: 'none',
-      borderRadius: 8,
-      padding: '5px 10px',
-      fontSize: 12,
-      color: '#6b6b67',
-      cursor: 'pointer',
-      fontWeight: 500
-    }
-  }, "\u4ECA\u65E5"))), viewMode === 'daily' ? /*#__PURE__*/React.createElement(DailyView, {
-    key: dailyKey,
-    sel: sel,
-    events: events,
-    todayStr: todayStr,
-    onEdit: function (ev) {
-      setEditEv(ev);
-      setModal('edit');
-    },
-    onMoveStart: function (ev) {
-      return setMoveTarget(ev);
-    },
-    onDel: delEv,
-    onPhoto: function (eid, i) {
-      setPhState({
-        eid,
-        i
-      });
-      setModal('photo');
-    }
-  }) : viewMode === 'list' ? /*#__PURE__*/React.createElement(ListView, {
-    events: events,
-    todayStr: todayStr,
-    onEdit: function (ev) {
-      setEditEv(ev);
-      setModal('edit');
-    }
-  }) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#fff',
-      padding: '10px 16px 6px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      cancelAnimationFrame(rafId.current);
-      const s = snapRef.current,
-        ty = calStateRef.current.translateY;
-      animateTo(ty, s(ty - 4 * WEEK_H));
-    },
-    style: {
-      background: '#f2f2ef',
-      border: 'none',
-      borderRadius: 8,
-      padding: '5px 12px',
-      fontSize: 16,
-      color: '#6b6b67',
-      cursor: 'pointer'
-    }
-  }, "\u2039"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600
-    }
-  }, dispYear, "\u5E74", dispMonth + 1, "\u6708"), /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      cancelAnimationFrame(rafId.current);
-      const s = snapRef.current,
-        ty = calStateRef.current.translateY;
-      animateTo(ty, s(ty + 4 * WEEK_H));
-    },
-    style: {
-      background: '#f2f2ef',
-      border: 'none',
-      borderRadius: 8,
-      padding: '5px 12px',
-      fontSize: 16,
-      color: '#6b6b67',
-      cursor: 'pointer'
-    }
-  }, "\u203A")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#fff',
-      display: 'grid',
-      gridTemplateColumns: 'repeat(7,1fr)',
-      textAlign: 'center',
-      padding: '4px 6px',
-      borderBottom: '1px solid #e8e8e4',
-      width: '100%',
-      boxSizing: 'border-box'
-    }
-  }, WEEKDAYS.map(function (d, i) {
-    return /*#__PURE__*/React.createElement("span", {
-      key: d,
-      style: {
-        fontSize: 10,
-        fontWeight: 500,
-        color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : '#a8a8a4'
-      }
-    }, d);
-  })), /*#__PURE__*/React.createElement("div", {
-    ref: containerRef,
-    style: {
-      background: '#fff',
-      height: WEEK_H * VISIBLE_WEEKS,
-      overflow: 'hidden',
-      userSelect: 'none',
-      touchAction: 'none',
-      width: '100%',
-      boxSizing: 'border-box'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      transform: "translateY(".concat(translateY, "px)"),
-      willChange: 'transform'
-    }
-  }, allWeeks.map(function (week, wi) {
-    return /*#__PURE__*/React.createElement(WeekRow, {
-      key: wi,
-      week: week,
-      selStr: selStr,
-      todayStr: todayStr,
-      events: events,
-      onSelect: setSel,
-      onEditEv: function (ev) {
-        setEditEv(ev);
-        setModal('edit');
-      },
-      dispMonth: dispMonth,
-      height: WEEK_H,
-      onGoDaily: function (d) {
-        setSel(d);
-        setViewMode('daily');
-        setDailyKey(function (k) {
-          return k + 1;
-        });
-      }
-    });
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#fff',
-      marginTop: 6,
-      padding: '16px 14px 90px',
-      borderTop: '1px solid #e8e8e4',
-      touchAction: 'pan-y',
-      boxSizing: 'border-box',
-      width: '100%',
-      overflowX: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 600,
-      color: '#6b6b67',
-      letterSpacing: 0.5,
-      textTransform: 'uppercase'
-    }
-  }, selStr === todayStr ? "\u4ECA\u65E5\uFF08".concat(sel.getMonth() + 1, "\u6708").concat(sel.getDate(), "\u65E5\uFF09\u306E\u4E88\u5B9A") : "".concat(sel.getMonth() + 1, "\u6708").concat(sel.getDate(), "\u65E5\u306E\u4E88\u5B9A")), getHoliday(selStr) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#c0392b',
-      fontWeight: 500,
-      marginTop: 3
-    }
-  }, "\uD83C\uDF8C ", getHoliday(selStr))), dayEvs.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: '#a8a8a4',
-      fontSize: 12,
-      textAlign: 'center',
-      padding: '20px 0'
-    }
-  }, "\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093") : dayEvs.map(function (ev) {
-    return /*#__PURE__*/React.createElement(EvCard, {
-      key: ev.id,
-      ev: ev,
-      onTap: function () {
-        setEditEv(ev);
-        setModal('edit');
-      },
-      onDel: delEv,
-      onPhoto: function (eid, i) {
-        setPhState({
-          eid,
-          i
-        });
-        setModal('photo');
-      },
-      onMoveStart: function (ev) {
-        return setMoveTarget(ev);
-      }
-    });
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'fixed',
-      bottom: 24,
-      right: 20,
-      zIndex: 200
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      return setModal('add');
-    },
-    style: {
-      width: 50,
-      height: 50,
-      borderRadius: '50%',
-      background: AC,
-      color: '#fff',
-      border: 'none',
-      fontSize: 26,
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxShadow: '0 4px 16px rgba(45,106,79,.35)'
-    }
-  }, "\uFF0B")), reminderEv && /*#__PURE__*/React.createElement("div", {
-    onClick: function () {
-      return setReminderEv(null);
-    },
-    style: {
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,.4)',
-      display: 'flex',
-      alignItems: 'flex-end',
-      zIndex: 300,
-      width: '100vw',
-      maxWidth: '100vw'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    onClick: function (e) {
-      return e.stopPropagation();
-    },
-    style: {
-      background: '#fff',
-      borderRadius: '18px 18px 0 0',
-      padding: '20px 16px 32px',
-      width: '100%',
-      boxSizing: 'border-box'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 32,
-      height: 3,
-      background: '#e8e8e4',
-      borderRadius: 2,
-      margin: '0 auto 16px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 15,
-      fontWeight: 600,
-      marginBottom: 6
-    }
-  }, "\u30EA\u30DE\u30A4\u30F3\u30C0\u30FC\u306B\u8FFD\u52A0\u3057\u307E\u3059\u304B\uFF1F"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: '#6b6b67',
-      marginBottom: 20
-    }
-  }, "\u300C", reminderEv.title, "\u300D\u3092\u6A19\u6E96\u30EA\u30DE\u30A4\u30F3\u30C0\u30FC\u30A2\u30D7\u30EA\u306B\u8FFD\u52A0\u3057\u3066\u901A\u77E5\u3092\u53D7\u3051\u53D6\u308C\u307E\u3059"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      return setReminderEv(null);
-    },
-    style: {
-      padding: 12,
-      borderRadius: 8,
-      fontSize: 14,
-      fontWeight: 500,
-      border: 'none',
-      cursor: 'pointer',
-      background: '#f2f2ef',
-      color: '#6b6b67'
-    }
-  }, "\u30B9\u30AD\u30C3\u30D7"), /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      return addToReminder(reminderEv);
-    },
-    style: {
-      padding: 12,
-      borderRadius: 8,
-      fontSize: 14,
-      fontWeight: 500,
-      border: 'none',
-      cursor: 'pointer',
-      background: '#2d6a4f',
-      color: '#fff'
-    }
-  }, "\u8FFD\u52A0\u3059\u308B")))), moveTarget && /*#__PURE__*/React.createElement(MoveModal, {
-    ev: moveTarget,
-    onMove: function (newDate) {
-      moveEv(moveTarget.id, newDate);
-      setMoveTarget(null);
-    },
-    onClose: function () {
-      return setMoveTarget(null);
-    }
-  }), modal === 'add' && /*#__PURE__*/React.createElement(EventModal, {
-    sel: sel,
-    onSave: function (ev) {
-      addEv(ev);
-      setModal(null);
-    },
-    onClose: function () {
-      return setModal(null);
-    }
-  }), modal === 'edit' && editEv && /*#__PURE__*/React.createElement(EventModal, {
-    sel: sel,
-    initial: editEv,
-    onSave: function (data) {
-      updateEv(editEv.id, data);
-      setModal(null);
-      setEditEv(null);
-    },
-    onClose: function () {
-      setModal(null);
-      setEditEv(null);
-    },
-    onDel: function () {
-      delEv(editEv.id);
-      setModal(null);
-      setEditEv(null);
-    }
-  }), modal === 'photo' && /*#__PURE__*/React.createElement(PhModal, {
-    events: events,
-    state: phState,
-    setState: setPhState,
-    onClose: function () {
-      return setModal(null);
-    }
-  }), toast && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'fixed',
-      bottom: 88,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: '#1a1a18',
-      color: '#fff',
-      padding: '9px 18px',
-      borderRadius: 20,
-      fontSize: 12,
-      fontWeight: 500,
-      zIndex: 400,
-      whiteSpace: 'nowrap'
-    }
-  }, toast));
-}
-function WeekRow(_ref) {
-  let week = _ref.week,
-    selStr = _ref.selStr,
-    todayStr = _ref.todayStr,
-    events = _ref.events,
-    onSelect = _ref.onSelect,
-    onEditEv = _ref.onEditEv,
-    dispMonth = _ref.dispMonth,
-    height = _ref.height,
-    onGoDaily = _ref.onGoDaily;
-  const ws = toDS(week[0]),
-    we = toDS(week[6]);
-  const normalEvs = events.filter(function (ev) {
-    if (ev.recurrence && ev.recurrence !== 'none') return false;
-    const a = ev.startDate || ev.date,
-      b = ev.endDate || ev.date || a;
-    return a <= we && b >= ws;
-  });
-  const recurEvs = events.filter(function (ev) {
-    if (!ev.recurrence || ev.recurrence === 'none') return false;
-    return week.some(function (c) {
-      return onDate(ev, toDS(c));
-    });
-  });
-  const expanded = [];
-  recurEvs.forEach(function (ev) {
-    return week.forEach(function (c) {
-      const ds2 = toDS(c);
-      if (onDate(ev, ds2)) expanded.push({
-        ...ev,
-        startDate: ds2,
-        endDate: ds2,
-        _recur: true
-      });
-    });
-  });
-  const allEvs = [...normalEvs, ...expanded].sort(function (a, b) {
-    const as2 = a.startDate || a.date,
-      bs2 = b.startDate || b.date,
-      al = new Date(a.endDate || a.date || as2) - new Date(as2),
-      bl = new Date(b.endDate || b.date || bs2) - new Date(bs2);
-    return as2.localeCompare(bs2) || bl - al;
-  });
-  const lanes = [];
-  allEvs.forEach(function (ev) {
-    const es = ev.startDate || ev.date,
-      ee = ev.endDate || ev.date || es;
-    let li = 0;
-    for (;;) {
-      if (!lanes[li]) lanes[li] = [];
-      if (!lanes[li].some(function (o) {
-        const os = o.startDate || o.date,
-          oe = o.endDate || o.date || os;
-        return es <= oe && ee >= os;
-      })) {
-        lanes[li].push(ev);
-        break;
-      }
-      li++;
-    }
-  });
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      height,
-      display: 'flex',
-      flexDirection: 'column',
-      paddingTop: 2,
-      borderBottom: '1px solid #f2f2ef',
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(7,1fr)',
-      padding: '0 4px',
-      width: '100%',
-      boxSizing: 'border-box'
-    }
-  }, week.map(function (cell, idx) {
-    const d2 = toDS(cell),
-      isT = d2 === todayStr,
-      isSel = d2 === selStr,
-      isOther = cell.getMonth() !== dispMonth;
-    const holiday = getHoliday(d2);
-    const isHoliday = !!holiday;
-    const col = idx === 0 || isHoliday ? '#c0392b' : idx === 6 ? '#2980b9' : '#1a1a18';
-    return /*#__PURE__*/React.createElement("div", {
-      key: idx,
-      "data-date": d2,
-      onClick: function () {
-        return onSelect(cell);
-      },
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '2px 1px',
-        cursor: 'pointer',
-        borderRadius: 6,
-        background: isSel && !isT ? ACL : 'transparent'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        lineHeight: '20px',
-        color: isOther ? '#c8c8c4' : isT ? '#fff' : col,
-        background: isT ? AC : 'transparent',
-        borderRadius: '50%',
-        width: isT ? 20 : undefined,
-        height: isT ? 20 : undefined,
-        display: isT ? 'flex' : undefined,
-        alignItems: isT ? 'center' : undefined,
-        justifyContent: isT ? 'center' : undefined,
-        fontWeight: isT ? 600 : 400,
-        pointerEvents: 'none'
-      }
-    }, cell.getDate()), !isOther && holiday && /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 7,
-        color: '#c0392b',
-        lineHeight: 1,
-        textAlign: 'center',
-        width: '100%',
-        overflow: 'hidden',
-        whiteSpace: 'nowrap',
-        textOverflow: 'ellipsis',
-        paddingBottom: 1
-      }
-    }, holiday));
-  })), allEvs.length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 1,
-      padding: '1px 4px 0'
-    }
-  }, lanes.slice(0, 3).map(function (lane, li) {
-    const used = new Set(),
-      bars = [];
-    lane.slice().sort(function (a, b) {
-      return (a.startDate || a.date).localeCompare(b.startDate || b.date);
-    }).forEach(function (ev) {
-      const es = ev.startDate || ev.date,
-        ee = ev.endDate || ev.date || es;
-      let cs = -1,
-        ce = -1;
-      week.forEach(function (c, i) {
-        const s2 = toDS(c);
-        if (s2 >= es && s2 <= ee) {
-          if (cs < 0) cs = i;
-          ce = i;
-        }
-      });
-      if (cs < 0) return;
-      for (let i = cs; i <= ce; i++) used.add(i);
-      const rL = es === toDS(week[cs]),
-        rR = ee === toDS(week[ce]);
-      const br = rL && rR ? '4px' : rL ? '4px 0 0 4px' : rR ? '0 4px 4px 0' : '0';
-      bars.push(/*#__PURE__*/React.createElement("div", {
-        key: ev.id + es,
-        "data-date": toDS(week[cs]),
-        onClick: function (e) {
-          e.stopPropagation();
-          if (onGoDaily) {
-            onGoDaily(week[cs]);
-          } else {
-            onSelect(week[cs]);
-          }
-        },
-        style: {
-          height: 10,
-          lineHeight: '10px',
-          fontSize: 8,
-          color: '#fff',
-          padding: '0 3px',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          textOverflow: 'ellipsis',
-          cursor: 'pointer',
-          alignSelf: 'center',
-          background: ev.color || AC,
-          gridColumn: "".concat(cs + 1, "/").concat(ce + 2),
-          borderRadius: br,
-          marginLeft: rL ? 1 : 0,
-          marginRight: rR ? 1 : 0,
-          fontWeight: 500,
-          opacity: ev._recur ? .85 : 1
-        }
-      }, rL || cs === 0 ? ev._recur ? '🔁 ' + ev.title : ev.title : ''));
-    });
-    week.forEach(function (_, i) {
-      if (!used.has(i)) bars.push(/*#__PURE__*/React.createElement("div", {
-        key: 'p' + li + i,
-        style: {
-          gridColumn: i + 1
-        }
-      }));
-    });
-    return /*#__PURE__*/React.createElement("div", {
-      key: li,
-      style: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(7,1fr)',
-        height: 11
-      }
-    }, bars);
-  }), lanes.length > 3 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: '#a8a8a4',
-      textAlign: 'right',
-      paddingRight: 2
-    }
-  }, "+", lanes.length - 3)));
-}
-function EvCard(_ref2) {
-  let ev = _ref2.ev,
-    onTap = _ref2.onTap,
-    onDel = _ref2.onDel,
-    onPhoto = _ref2.onPhoto,
-    onMoveStart = _ref2.onMoveStart;
-  const a = ev.startDate || ev.date,
-    b = ev.endDate || ev.date || a;
-  const photos = ev.photos || (ev.photo ? [ev.photo] : []);
-  const recurLbl = recurrenceLabel(ev);
-  return /*#__PURE__*/React.createElement("div", {
-    onClick: onTap,
-    style: {
-      padding: '11px 13px',
-      borderRadius: 12,
-      marginBottom: 7,
-      background: '#f2f2ef',
-      borderLeft: "3px solid ".concat(ev.color || AC),
-      cursor: 'pointer',
-      transition: 'opacity 0.15s',
-      userSelect: 'none',
-      opacity: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'flex-start'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 14,
-      fontWeight: 500,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 4
-    }
-  }, ev.title), recurLbl ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#6b6b67',
-      marginTop: 2
-    }
-  }, "\uD83D\uDD01 ", recurLbl) : a !== b && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#6b6b67',
-      marginTop: 2
-    }
-  }, "\uD83D\uDCC5 ", a, " \u301C ", b), ev.time && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#6b6b67',
-      marginTop: 2
-    }
-  }, "\uD83D\uDD50 ", ev.time), ev.memo && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#6b6b67',
-      marginTop: 2
-    }
-  }, "\uD83D\uDCDD ", ev.memo)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 4,
-      alignItems: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 2,
-      alignItems: 'center'
-    }
-  }, (!ev.recurrence || ev.recurrence === 'none') && /*#__PURE__*/React.createElement("button", {
-    onClick: function (e) {
-      e.stopPropagation();
-      onMoveStart(ev);
-    },
-    style: {
-      background: '#2d6a4f',
-      border: 'none',
-      color: '#fff',
-      fontSize: 11,
-      fontWeight: 600,
-      cursor: 'pointer',
-      padding: '4px 10px',
-      borderRadius: 6
-    }
-  }, "\u79FB\u52D5"), /*#__PURE__*/React.createElement("button", {
-    onClick: function (e) {
-      e.stopPropagation();
-      if (confirm('削除しますか？')) onDel(ev.id);
-    },
-    style: {
-      background: 'none',
-      border: 'none',
-      color: '#a8a8a4',
-      fontSize: 14,
-      cursor: 'pointer',
-      padding: '0 2px'
-    }
-  }, "\u2715")))), photos.length > 0 && /*#__PURE__*/React.createElement("div", {
-    onClick: function (e) {
-      return e.stopPropagation();
-    },
-    style: {
-      display: 'grid',
-      gridTemplateColumns: photos.length === 1 ? '1fr' : 'repeat(3,1fr)',
-      gap: 3,
-      marginTop: 8
-    }
-  }, photos.map(function (src, i) {
-    return /*#__PURE__*/React.createElement("img", {
-      key: i,
-      src: src,
-      onClick: function () {
-        return onPhoto(ev.id, i);
-      },
-      style: {
-        width: '100%',
-        aspectRatio: photos.length === 1 ? '16/9' : '1',
-        objectFit: 'cover',
-        borderRadius: 6,
-        cursor: 'pointer'
-      }
-    });
-  })));
+  },{passive:false});
 }
 
-// 追加・編集共通モーダル
-function EventModal(_ref3) {
-  let sel = _ref3.sel,
-    initial = _ref3.initial,
-    onSave = _ref3.onSave,
-    onClose = _ref3.onClose,
-    onDel = _ref3.onDel;
-  const isEdit = !!initial;
-  const _useState25 = useState((initial === null || initial === void 0 ? void 0 : initial.title) || ''),
-    _useState26 = _slicedToArray(_useState25, 2),
-    title = _useState26[0],
-    setTitle = _useState26[1];
-  const _useState27 = useState((initial === null || initial === void 0 ? void 0 : initial.startDate) || (initial === null || initial === void 0 ? void 0 : initial.date) || toDS(sel)),
-    _useState28 = _slicedToArray(_useState27, 2),
-    start = _useState28[0],
-    setStart = _useState28[1];
-  const _useState29 = useState((initial === null || initial === void 0 ? void 0 : initial.endDate) || (initial === null || initial === void 0 ? void 0 : initial.startDate) || (initial === null || initial === void 0 ? void 0 : initial.date) || toDS(sel)),
-    _useState30 = _slicedToArray(_useState29, 2),
-    end = _useState30[0],
-    setEnd = _useState30[1];
-  const _useState31 = useState((initial === null || initial === void 0 ? void 0 : initial.time) || ''),
-    _useState32 = _slicedToArray(_useState31, 2),
-    time = _useState32[0],
-    setTime = _useState32[1];
-  const _useState33 = useState((initial === null || initial === void 0 ? void 0 : initial.memo) || ''),
-    _useState34 = _slicedToArray(_useState33, 2),
-    memo = _useState34[0],
-    setMemo = _useState34[1];
-  const _useState35 = useState((initial === null || initial === void 0 ? void 0 : initial.color) || COLORS[0]),
-    _useState36 = _slicedToArray(_useState35, 2),
-    color = _useState36[0],
-    setColor = _useState36[1];
-  const _useState37 = useState((initial === null || initial === void 0 ? void 0 : initial.photos) || (initial !== null && initial !== void 0 && initial.photo ? [initial.photo] : [])),
-    _useState38 = _slicedToArray(_useState37, 2),
-    photos = _useState38[0],
-    setPhotos = _useState38[1];
-  const _useState39 = useState((initial === null || initial === void 0 ? void 0 : initial.recurrence) || 'none'),
-    _useState40 = _slicedToArray(_useState39, 2),
-    recurrence = _useState40[0],
-    setRecurrence = _useState40[1];
-  const fileRef = useRef();
-  const handleFiles = function (e) {
-    Array.from(e.target.files || []).slice(0, 10 - photos.length).forEach(function (f) {
-      return resizeImg(f, function (url) {
-        return setPhotos(function (p) {
-          return [...p, url];
-        });
-      });
-    });
-    e.target.value = '';
-  };
-  const save = function () {
-    if (!title.trim()) {
-      alert('タイトルを入力してください');
+function snapY(ty){
+  var sn=Math.round(ty/WEEK_H)*WEEK_H;
+  var buf=4;
+  var tb=buf+Math.round(sn/WEEK_H);
+  var total=VISIBLE_WEEKS+buf*2;
+  if(tb<3){state.anchorWeek=addDays(state.anchorWeek,28);return sn+4*WEEK_H;}
+  if(tb>total-VISIBLE_WEEKS-3){state.anchorWeek=addDays(state.anchorWeek,-28);return sn-4*WEEK_H;}
+  return sn;
+}
+
+function momentum(v,inner){
+  calTouchState.rafId=requestAnimationFrame(function(){
+    if(Math.abs(v)<0.5){
+      state.translateY=snapY(state.translateY);
+      inner.style.transform='translateY('+state.translateY+'px)';
+      updateDispMonth();
       return;
     }
-    onSave({
-      title: title.trim(),
-      startDate: start,
-      endDate: recurrence !== 'none' ? start : end || start,
-      date: start,
-      time,
-      memo: memo.trim(),
-      color,
-      recurrence,
-      photos: photos.length ? [...photos] : null,
-      photo: photos[0] || null
-    });
-  };
-  const recurPreview = function () {
-    const d = new Date(start + 'T12:00:00');
-    if (recurrence === 'weekly') return "\u6BCE\u9031".concat(WEEKDAYS[d.getDay()], "\u66DC\u65E5\u306B\u7E70\u308A\u8FD4\u3057");
-    if (recurrence === 'monthly') return "\u6BCE\u6708".concat(d.getDate(), "\u65E5\u306B\u7E70\u308A\u8FD4\u3057");
-    if (recurrence === 'yearly') return "\u6BCE\u5E74".concat(d.getMonth() + 1, "\u6708").concat(d.getDate(), "\u65E5\u306B\u7E70\u308A\u8FD4\u3057");
-  };
-  const inp = {
-    width: '100%',
-    padding: '8px 10px',
-    border: '1.5px solid #e8e8e4',
-    borderRadius: 8,
-    fontSize: 16,
-    fontFamily: 'inherit',
-    background: '#fff',
-    color: '#1a1a18',
-    outline: 'none',
-    marginBottom: 8,
-    boxSizing: 'border-box'
-  };
-  const lbl = {
-    fontSize: 9,
-    color: '#a8a8a4',
-    fontWeight: 500,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    display: 'block',
-    marginBottom: 3
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    onClick: onClose,
-    style: {
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,.4)',
-      display: 'flex',
-      alignItems: 'flex-end',
-      zIndex: 300,
-      width: '100vw',
-      maxWidth: '100vw'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    onClick: function (e) {
-      return e.stopPropagation();
-    },
-    style: {
-      background: '#fff',
-      borderRadius: '18px 18px 0 0',
-      padding: '14px 14px 24px',
-      width: '100%',
-      margin: 0,
-      maxHeight: '92vh',
-      overflowY: 'auto',
-      boxSizing: 'border-box',
-      overflowX: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 32,
-      height: 3,
-      background: '#e8e8e4',
-      borderRadius: 2,
-      margin: '0 auto 10px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 15,
-      fontWeight: 600,
-      marginBottom: 10
-    }
-  }, isEdit ? '予定を編集' : '予定を追加'), /*#__PURE__*/React.createElement("label", {
-    style: lbl
-  }, "\u30BF\u30A4\u30C8\u30EB"), /*#__PURE__*/React.createElement("input", {
-    autoFocus: true,
-    value: title,
-    onChange: function (e) {
-      return setTitle(e.target.value);
-    },
-    placeholder: "\u4F8B\uFF1A\u65C5\u884C\u3001\u8A95\u751F\u65E5...",
-    style: inp
-  }), /*#__PURE__*/React.createElement("label", {
-    style: lbl
-  }, recurrence !== 'none' ? '開始日' : '期間'), recurrence !== 'none' ? /*#__PURE__*/React.createElement("input", {
-    type: "date",
-    value: start,
-    onChange: function (e) {
-      return setStart(e.target.value);
-    },
-    style: inp
-  }) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: 6,
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    style: {
-      fontSize: 10,
-      color: '#a8a8a4',
-      display: 'block',
-      marginBottom: 4
-    }
-  }, "\u958B\u59CB\u65E5"), /*#__PURE__*/React.createElement("input", {
-    type: "date",
-    value: start,
-    onChange: function (e) {
-      setStart(e.target.value);
-      if (!end || end < e.target.value) setEnd(e.target.value);
-    },
-    style: {
-      ...inp,
-      marginBottom: 0
-    }
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    style: {
-      fontSize: 10,
-      color: '#a8a8a4',
-      display: 'block',
-      marginBottom: 4
-    }
-  }, "\u7D42\u4E86\u65E5"), /*#__PURE__*/React.createElement("input", {
-    type: "date",
-    value: end,
-    onChange: function (e) {
-      return setEnd(e.target.value);
-    },
-    style: {
-      ...inp,
-      marginBottom: 0
-    }
-  }))), /*#__PURE__*/React.createElement("label", {
-    style: lbl
-  }, "\u6642\u9593\uFF08\u4EFB\u610F\uFF09"), /*#__PURE__*/React.createElement("input", {
-    type: "time",
-    value: time,
-    onChange: function (e) {
-      return setTime(e.target.value);
-    },
-    style: inp
-  }), time && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    style: lbl
-  }, "\u901A\u77E5"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(4,1fr)',
-      gap: 4,
-      marginBottom: 8
-    }
-  }, [[-1, 'なし'], [0, '当日'], [10, '10分前'], [30, '30分前']].map(function (_ref4) {
-    let _ref5 = _slicedToArray(_ref4, 2),
-      val = _ref5[0],
-      lbl2 = _ref5[1];
-    return /*#__PURE__*/React.createElement("button", {
-      key: val,
-      onClick: function () {
-        return setNotifMins(val);
-      },
-      style: {
-        padding: '6px 4px',
-        borderRadius: 8,
-        fontSize: 11,
-        fontWeight: 500,
-        border: "1.5px solid ".concat(notifMins === val ? AC : '#e8e8e4'),
-        background: notifMins === val ? ACL : '#fff',
-        color: notifMins === val ? AC : '#6b6b67',
-        cursor: 'pointer'
-      }
-    }, lbl2);
-  }))), /*#__PURE__*/React.createElement("label", {
-    style: lbl
-  }, "\u7E70\u308A\u8FD4\u3057"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(4,1fr)',
-      gap: 4,
-      marginBottom: 8
-    }
-  }, Object.entries(RECURRENCE_LABELS).map(function (_ref6) {
-    let _ref7 = _slicedToArray(_ref6, 2),
-      val = _ref7[0],
-      l2 = _ref7[1];
-    return /*#__PURE__*/React.createElement("button", {
-      key: val,
-      onClick: function () {
-        return setRecurrence(val);
-      },
-      style: {
-        padding: '6px 4px',
-        borderRadius: 8,
-        fontSize: 11,
-        fontWeight: 500,
-        border: "1.5px solid ".concat(recurrence === val ? AC : '#e8e8e4'),
-        background: recurrence === val ? ACL : '#fff',
-        color: recurrence === val ? AC : '#6b6b67',
-        cursor: 'pointer'
-      }
-    }, l2);
-  })), recurPreview() && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: AC,
-      background: ACL,
-      borderRadius: 8,
-      padding: '5px 10px',
-      marginBottom: 8
-    }
-  }, "\uD83D\uDD01 ", recurPreview()), /*#__PURE__*/React.createElement("label", {
-    style: lbl
-  }, "\u30E1\u30E2\uFF08\u4EFB\u610F\uFF09"), /*#__PURE__*/React.createElement("textarea", {
-    value: memo,
-    onChange: function (e) {
-      return setMemo(e.target.value);
-    },
-    placeholder: "\u30E1\u30E2...",
-    style: {
-      ...inp,
-      height: 52,
-      resize: 'none'
-    }
-  }), /*#__PURE__*/React.createElement("label", {
-    style: lbl
-  }, "\u8272"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      marginBottom: 8
-    }
-  }, COLORS.map(function (c) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: c,
-      onClick: function () {
-        return setColor(c);
-      },
-      style: {
-        width: 24,
-        height: 24,
-        borderRadius: '50%',
-        background: c,
-        cursor: 'pointer',
-        border: color === c ? '2.5px solid #1a1a18' : '2.5px solid transparent'
-      }
-    });
-  })), /*#__PURE__*/React.createElement("label", {
-    style: lbl
-  }, "\u5199\u771F\uFF08\u6700\u592710\u679A\uFF09"), photos.length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3,1fr)',
-      gap: 5,
-      marginBottom: 10
-    }
-  }, photos.map(function (url, i) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: i,
-      style: {
-        position: 'relative',
-        aspectRatio: '1',
-        borderRadius: 8,
-        overflow: 'hidden'
-      }
-    }, /*#__PURE__*/React.createElement("img", {
-      src: url,
-      style: {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover'
-      }
-    }), /*#__PURE__*/React.createElement("button", {
-      onClick: function () {
-        return setPhotos(function (p) {
-          return p.filter(function (_, j) {
-            return j !== i;
-          });
-        });
-      },
-      style: {
-        position: 'absolute',
-        top: 3,
-        right: 3,
-        width: 18,
-        height: 18,
-        borderRadius: '50%',
-        background: 'rgba(0,0,0,.55)',
-        color: '#fff',
-        border: 'none',
-        fontSize: 11,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }
-    }, "\u2715"));
-  })), photos.length < 10 && /*#__PURE__*/React.createElement("div", {
-    onClick: function () {
-      var _fileRef$current;
-      return (_fileRef$current = fileRef.current) === null || _fileRef$current === void 0 ? void 0 : _fileRef$current.click();
-    },
-    style: {
-      border: '1.5px dashed #e8e8e4',
-      borderRadius: 8,
-      padding: 10,
-      textAlign: 'center',
-      cursor: 'pointer',
-      color: '#a8a8a4',
-      fontSize: 12,
-      marginBottom: 8
-    }
-  }, "\uD83D\uDCF7 \u30BF\u30C3\u30D7\u3057\u3066\u5199\u771F\u3092\u8FFD\u52A0", /*#__PURE__*/React.createElement("input", {
-    ref: fileRef,
-    type: "file",
-    accept: "image/*",
-    multiple: true,
-    onChange: handleFiles,
-    style: {
-      display: 'none'
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: isEdit ? '1fr 1fr 1fr' : '1fr 1fr',
-      gap: 8,
-      marginTop: 6
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: onClose,
-    style: {
-      padding: 10,
-      borderRadius: 8,
-      fontSize: 13,
-      fontWeight: 500,
-      border: 'none',
-      cursor: 'pointer',
-      background: '#f2f2ef',
-      color: '#6b6b67'
-    }
-  }, "\u30AD\u30E3\u30F3\u30BB\u30EB"), isEdit && /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      if (confirm('削除しますか？')) onDel();
-    },
-    style: {
-      padding: 12,
-      borderRadius: 8,
-      fontSize: 14,
-      fontWeight: 500,
-      border: 'none',
-      cursor: 'pointer',
-      background: '#fde8e8',
-      color: '#c0392b'
-    }
-  }, "\u524A\u9664"), /*#__PURE__*/React.createElement("button", {
-    onClick: save,
-    style: {
-      padding: 10,
-      borderRadius: 8,
-      fontSize: 13,
-      fontWeight: 500,
-      border: 'none',
-      cursor: 'pointer',
-      background: AC,
-      color: '#fff'
-    }
-  }, isEdit ? '更新' : '保存'))));
-}
-function DailyView(_ref8) {
-  let sel = _ref8.sel,
-    events = _ref8.events,
-    todayStr = _ref8.todayStr,
-    onEdit = _ref8.onEdit,
-    onMoveStart = _ref8.onMoveStart,
-    onDel = _ref8.onDel,
-    onPhoto = _ref8.onPhoto;
-  const selStr = toDS(sel);
-  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-  const d = sel;
-  const isToday = selStr === todayStr;
-  const holiday = getHoliday(selStr);
-  const wday = weekdays[d.getDay()];
-  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-  const dayEvs = events.filter(function (e) {
-    return onDate(e, selStr);
-  }).sort(function (a, b) {
-    return (a.time || '99:99').localeCompare(b.time || '99:99');
+    v*=0.88;
+    state.translateY+=v;
+    inner.style.transform='translateY('+state.translateY+'px)';
+    momentum(v,inner);
   });
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#f7f7f5',
-      minHeight: '100vh',
-      paddingBottom: 100,
-      width: '100%',
-      boxSizing: 'border-box',
-      overflowX: 'hidden'
+}
+
+function animateTo(from,to){
+  cancelAnimationFrame(calTouchState.rafId);
+  var pos=from;
+  function step(){
+    var d=to-pos;
+    if(Math.abs(d)<0.8){
+      state.translateY=to;
+      render();
+      return;
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#fff',
-      padding: '20px 16px 16px',
-      borderBottom: '1px solid #e8e8e4',
-      boxSizing: 'border-box',
-      width: '100%'
+    pos+=d*0.2;
+    state.translateY=pos;
+    render();
+    calTouchState.rafId=requestAnimationFrame(step);
+  }
+  step();
+}
+
+function updateDispMonth(){
+  var buf=4;
+  var topIdx=-Math.round(state.translateY/WEEK_H);
+  var midWeek=addDays(addDays(state.anchorWeek,topIdx*7),3*7);
+  state.dispMonth=midWeek.getMonth();
+  state.dispYear=midWeek.getFullYear();
+}
+
+// ========== その日の予定 ==========
+function renderDayEvents(wrap){
+  var selStr=toDS(state.sel);
+  var d=state.sel;
+  var wdays=['日','月','火','水','木','金','土'];
+  var isToday=selStr===todayStr;
+  var holiday=getHoliday(selStr);
+
+  var area=el('div',{style:'background:#fff;margin-top:6px;padding:16px 14px 90px;border-top:1px solid #e8e8e4;touch-action:pan-y;'});
+
+  var hdr=el('div',{style:'margin-bottom:12px;'});
+  var title=isToday?'今日（'+(d.getMonth()+1)+'月'+d.getDate()+'日）の予定':(d.getMonth()+1)+'月'+d.getDate()+'日の予定';
+  hdr.appendChild(el('div',{style:'font-size:10px;font-weight:600;color:#6b6b67;letter-spacing:0.5px;text-transform:uppercase;'},title));
+  if(holiday)hdr.appendChild(el('div',{style:'font-size:11px;color:#c0392b;font-weight:500;margin-top:3px;'},'🎌 '+holiday));
+  area.appendChild(hdr);
+
+  var dayEvs=getEventsForDate(selStr);
+  dayEvs.sort(function(a,b){return (a.time||'99:99').localeCompare(b.time||'99:99');});
+
+  if(dayEvs.length===0){
+    area.appendChild(el('div',{style:'font-size:13px;color:#a8a8a4;padding:12px 0;'},'予定はありません'));
+  } else {
+    dayEvs.forEach(function(ev){
+      area.appendChild(renderEvCard(ev));
+    });
+  }
+  wrap.appendChild(area);
+}
+
+function getEventsForDate(ds){
+  var result=[];
+  state.events.forEach(function(ev){
+    var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
+    if(!ev.recurrence||ev.recurrence==='none'){
+      if(a<=ds&&ds<=b)result.push(ev);
+    } else {
+      if(matchRecur(ev,ds))result.push(ev);
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'flex-end',
-      gap: 8
+  });
+  return result;
+}
+
+function renderEvCard(ev){
+  var canMove=!ev.recurrence||ev.recurrence==='none';
+  var card=el('div',{style:'padding:11px 13px;border-radius:12px;margin-bottom:7px;background:#f2f2ef;border-left:3px solid '+(ev.color||AC)+';cursor:pointer;user-select:none;'});
+  card.addEventListener('click',function(){
+    state.editEv=ev;
+    state.modal='edit';
+    render();
+  });
+
+  var row=el('div',{style:'display:flex;align-items:flex-start;'});
+  var info=el('div',{style:'flex:1;'});
+  info.appendChild(el('div',{style:'font-size:14px;font-weight:500;'},ev.title));
+  if(ev.time)info.appendChild(el('div',{style:'font-size:12px;color:#6b6b67;margin-top:2px;'},'🕐 '+ev.time));
+  if(ev.recurrence&&ev.recurrence!=='none'){
+    var rl={'weekly':'毎週','monthly':'毎月','yearly':'毎年'};
+    info.appendChild(el('div',{style:'font-size:11px;color:#a8a8a4;margin-top:2px;'},'🔁 '+rl[ev.recurrence]));
+  }
+  if(ev.memo)info.appendChild(el('div',{style:'font-size:12px;color:#6b6b67;margin-top:2px;'},ev.memo));
+  row.appendChild(info);
+
+  var btns=el('div',{style:'display:flex;gap:4px;align-items:center;'});
+  if(canMove){
+    var moveBtn=el('button',{style:'background:'+AC+';border:none;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;border-radius:6px;'});
+    moveBtn.textContent='移動';
+    moveBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      state.moveEv=ev;
+      state.modal='move';
+      render();
+    });
+    btns.appendChild(moveBtn);
+  }
+  var delBtn=el('button',{style:'background:none;border:none;color:#a8a8a4;font-size:14px;cursor:pointer;padding:0 2px;'});
+  delBtn.textContent='✕';
+  delBtn.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(confirm('削除しますか？')){
+      state.events=state.events.filter(function(x){return x.id!==ev.id;});
+      saveEvents(state.events);
+      render();
     }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 42,
-      fontWeight: 700,
-      lineHeight: 1,
-      color: isToday ? '#2d6a4f' : isWeekend ? d.getDay() === 0 ? '#c0392b' : '#2980b9' : '#1a1a18'
-    }
-  }, d.getDate()), /*#__PURE__*/React.createElement("div", {
-    style: {
-      paddingBottom: 4
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 14,
-      color: '#6b6b67',
-      fontWeight: 500
-    }
-  }, d.getFullYear(), "\u5E74", d.getMonth() + 1, "\u6708 ", wday, "\u66DC\u65E5"), holiday && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: '#c0392b',
-      marginTop: 2
-    }
-  }, "\uD83C\uDF8C ", holiday), isToday && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: '#2d6a4f',
-      fontWeight: 600,
-      marginTop: 2
-    }
-  }, "\u4ECA\u65E5"))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 10,
-      fontSize: 11,
-      color: '#a8a8a4',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 4
-    }
-  })), dayEvs.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: '48px 20px',
-      textAlign: 'center',
-      color: '#a8a8a4',
-      fontSize: 14
-    }
-  }, "\u3053\u306E\u65E5\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093") : /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 8
-    }
-  }, dayEvs.map(function (ev) {
-    const recurLbl = recurrenceLabel(ev);
-    const photos = ev.photos || (ev.photo ? [ev.photo] : []);
-    const canMove = !ev.recurrence || ev.recurrence === 'none';
-    return /*#__PURE__*/React.createElement("div", {
-      key: ev.id,
-      style: {
-        background: '#fff',
-        marginBottom: 1,
-        borderLeft: "4px solid ".concat(ev.color || '#2d6a4f')
+  });
+  btns.appendChild(delBtn);
+  row.appendChild(btns);
+  card.appendChild(row);
+  return card;
+}
+
+// ========== デイリービュー ==========
+function renderDaily(wrap){
+  var selStr=toDS(state.sel);
+  var d=state.sel;
+  var wdays=['日','月','火','水','木','金','土'];
+  var isToday=selStr===todayStr;
+  var holiday=getHoliday(selStr);
+  var isWeekend=d.getDay()===0||d.getDay()===6;
+  var col=isToday?AC:d.getDay()===0?'#c0392b':d.getDay()===6?'#2980b9':'#1a1a18';
+
+  var area=el('div',{style:'background:#f7f7f5;min-height:80vh;padding-bottom:100px;'});
+
+  var hdr=el('div',{style:'background:#fff;padding:20px 16px 16px;border-bottom:1px solid #e8e8e4;'});
+  var dateRow=el('div',{style:'display:flex;align-items:flex-end;gap:8px;'});
+  var numEl=el('span',{style:'font-size:42px;font-weight:700;line-height:1;color:'+col+';'});
+  numEl.textContent=d.getDate();
+  var infoEl=el('div',{style:'padding-bottom:4px;'});
+  infoEl.appendChild(el('div',{style:'font-size:14px;color:#6b6b67;font-weight:500;'},d.getFullYear()+'年'+(d.getMonth()+1)+'月 '+wdays[d.getDay()]+'曜日'));
+  if(holiday)infoEl.appendChild(el('div',{style:'font-size:12px;color:#c0392b;margin-top:2px;'},'🎌 '+holiday));
+  if(isToday)infoEl.appendChild(el('div',{style:'font-size:12px;color:'+AC+';font-weight:600;margin-top:2px;'},'今日'));
+  dateRow.appendChild(numEl);
+  dateRow.appendChild(infoEl);
+  hdr.appendChild(dateRow);
+  area.appendChild(hdr);
+
+  var dayEvs=getEventsForDate(selStr);
+  dayEvs.sort(function(a,b){return (a.time||'99:99').localeCompare(b.time||'99:99');});
+
+  if(dayEvs.length===0){
+    area.appendChild(el('div',{style:'padding:48px 20px;text-align:center;color:#a8a8a4;font-size:14px;'},'この日の予定はありません'));
+  } else {
+    var list=el('div',{style:'margin-top:8px;'});
+    dayEvs.forEach(function(ev){
+      var canMove=!ev.recurrence||ev.recurrence==='none';
+      var item=el('div',{style:'background:#fff;margin-bottom:1px;border-left:4px solid '+(ev.color||AC)+';cursor:pointer;'});
+      item.addEventListener('click',function(){
+        state.editEv=ev;
+        state.modal='edit';
+        render();
+      });
+      var inner=el('div',{style:'padding:14px 16px;'});
+      var row=el('div',{style:'display:flex;align-items:flex-start;justify-content:space-between;'});
+      var info=el('div',{style:'flex:1;'});
+      info.appendChild(el('div',{style:'font-size:16px;font-weight:500;color:#1a1a18;'},ev.title));
+      if(ev.time)info.appendChild(el('div',{style:'font-size:13px;color:#6b6b67;margin-top:3px;'},'🕐 '+ev.time));
+      if(ev.memo)info.appendChild(el('div',{style:'font-size:13px;color:#6b6b67;margin-top:3px;'},'📝 '+ev.memo));
+      row.appendChild(info);
+      var btns=el('div',{style:'display:flex;gap:6px;align-items:center;margin-left:8px;'});
+      if(canMove){
+        var mb=el('button',{style:'background:'+AC+';border:none;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;border-radius:6px;'});
+        mb.textContent='移動';
+        mb.addEventListener('click',function(e){e.stopPropagation();state.moveEv=ev;state.modal='move';render();});
+        btns.appendChild(mb);
       }
-    }, /*#__PURE__*/React.createElement("div", {
-      onClick: function () {
-        return onEdit(ev);
-      },
-      style: {
-        padding: '14px 16px',
-        cursor: 'pointer'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 16,
-        fontWeight: 500,
-        color: '#1a1a18'
-      }
-    }, ev.title), ev.time && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 13,
-        color: '#6b6b67',
-        marginTop: 3
-      }
-    }, "\uD83D\uDD50 ", ev.time), recurLbl && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: '#a8a8a4',
-        marginTop: 3
-      }
-    }, "\uD83D\uDD01 ", recurLbl), ev.memo && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 13,
-        color: '#6b6b67',
-        marginTop: 3
-      }
-    }, "\uD83D\uDCDD ", ev.memo)), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        gap: 6,
-        alignItems: 'center',
-        marginLeft: 8
-      }
-    }, canMove && /*#__PURE__*/React.createElement("button", {
-      onClick: function (e) {
+      var db=el('button',{style:'background:none;border:none;color:#a8a8a4;font-size:16px;cursor:pointer;padding:0 4px;'});
+      db.textContent='✕';
+      db.addEventListener('click',function(e){
         e.stopPropagation();
-        onMoveStart(ev);
-      },
-      style: {
-        background: '#2d6a4f',
-        border: 'none',
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: 600,
-        cursor: 'pointer',
-        padding: '4px 10px',
-        borderRadius: 6
-      }
-    }, "\u79FB\u52D5"), /*#__PURE__*/React.createElement("button", {
-      onClick: function (e) {
-        e.stopPropagation();
-        if (confirm('削除しますか？')) onDel(ev.id);
-      },
-      style: {
-        background: 'none',
-        border: 'none',
-        color: '#a8a8a4',
-        fontSize: 16,
-        cursor: 'pointer',
-        padding: '0 4px'
-      }
-    }, "\u2715"))), photos.length > 0 && /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'grid',
-        gridTemplateColumns: photos.length === 1 ? '1fr' : 'repeat(3,1fr)',
-        gap: 4,
-        marginTop: 10
-      }
-    }, photos.map(function (src, i) {
-      return /*#__PURE__*/React.createElement("img", {
-        key: i,
-        src: src,
-        onClick: function (e) {
-          e.stopPropagation();
-          onPhoto(ev.id, i);
-        },
-        style: {
-          width: '100%',
-          aspectRatio: photos.length === 1 ? '16/9' : '1',
-          objectFit: 'cover',
-          borderRadius: 6,
-          cursor: 'pointer'
+        if(confirm('削除しますか？')){
+          state.events=state.events.filter(function(x){return x.id!==ev.id;});
+          saveEvents(state.events);
+          render();
         }
       });
-    }))));
-  })));
+      btns.appendChild(db);
+      row.appendChild(btns);
+      inner.appendChild(row);
+      item.appendChild(inner);
+      list.appendChild(item);
+    });
+    area.appendChild(list);
+  }
+  wrap.appendChild(area);
 }
-function ListView(_ref9) {
-  let events = _ref9.events,
-    todayStr = _ref9.todayStr,
-    onEdit = _ref9.onEdit;
-  // 今日以降の予定を日付順に並べる
-  const sorted = [...events].filter(function (ev) {
-    const d = ev.startDate || ev.date;
-    return d >= todayStr;
-  }).sort(function (a, b) {
-    const da = a.startDate || a.date;
-    const db = b.startDate || b.date;
-    if (da !== db) return da.localeCompare(db);
-    return (a.time || '99:99').localeCompare(b.time || '99:99');
-  });
 
-  // 日付ごとにグループ化
-  const grouped = {};
-  sorted.forEach(function (ev) {
-    const d = ev.startDate || ev.date;
-    if (!grouped[d]) grouped[d] = [];
+// ========== リストビュー ==========
+function renderList(wrap){
+  var area=el('div',{style:'background:#f7f7f5;min-height:80vh;padding-bottom:90px;'});
+  var today=new Date(); today.setHours(0,0,0,0);
+  var grouped={};
+  state.events.filter(function(ev){
+    return (!ev.recurrence||ev.recurrence==='none')&&(ev.startDate||ev.date)>=todayStr;
+  }).sort(function(a,b){
+    return (a.startDate||a.date).localeCompare(b.startDate||b.date);
+  }).forEach(function(ev){
+    var d=ev.startDate||ev.date;
+    if(!grouped[d])grouped[d]=[];
     grouped[d].push(ev);
   });
-
-  // 繰り返し予定を今後30日分展開
-  const today = new Date(todayStr + 'T12:00:00');
-  events.filter(function (ev) {
-    return ev.recurrence && ev.recurrence !== 'none';
-  }).forEach(function (ev) {
-    for (let i = 0; i <= 30; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() + i);
-      const ds = toDS(d);
-      if (ds < (ev.startDate || ev.date)) continue;
-      if (matchesRecurrence(ev, ds)) {
-        if (!grouped[ds]) grouped[ds] = [];
-        if (!grouped[ds].find(function (e) {
-          return e.id === ev.id;
-        })) {
-          grouped[ds].push({
-            ...ev,
-            _displayDate: ds
-          });
-        }
+  // 繰り返し予定（30日分）
+  for(var i=0;i<=30;i++){
+    var dd=addDays(today,i);
+    var ds=toDS(dd);
+    state.events.filter(function(ev){return ev.recurrence&&ev.recurrence!=='none';}).forEach(function(ev){
+      if(matchRecur(ev,ds)){
+        if(!grouped[ds])grouped[ds]=[];
+        if(!grouped[ds].find(function(x){return x.id===ev.id;}))
+          grouped[ds].push(Object.assign({},ev,{_displayDate:ds}));
       }
-    }
-  });
-  const days = Object.keys(grouped).sort();
-  const fmtDay = function (ds) {
-    const d = new Date(ds + 'T12:00:00');
-    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-    const m = d.getMonth() + 1,
-      day = d.getDate(),
-      w = weekdays[d.getDay()];
-    const isToday = ds === todayStr;
-    return "".concat(m, "\u6708").concat(day, "\u65E5\uFF08").concat(w, "\uFF09").concat(isToday ? ' 今日' : '');
-  };
-  if (days.length === 0) {
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: '#fff',
-        marginTop: 6,
-        padding: '40px 16px',
-        textAlign: 'center',
-        color: '#a8a8a4',
-        fontSize: 13
-      }
-    }, "\u4ECA\u5F8C\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093");
-  }
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#f7f7f5',
-      minHeight: '60vh',
-      paddingBottom: 90
-    }
-  }, days.map(function (ds) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: ds
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        padding: '14px 16px 6px',
-        background: '#f7f7f5'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 13,
-        fontWeight: 600,
-        color: ds === todayStr ? '#2d6a4f' : '#6b6b67'
-      }
-    }, fmtDay(ds))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: '#fff',
-        borderTop: '1px solid #e8e8e4',
-        borderBottom: '1px solid #e8e8e4'
-      }
-    }, grouped[ds].map(function (ev, idx) {
-      const recurLbl = recurrenceLabel(ev);
-      return /*#__PURE__*/React.createElement("div", {
-        key: ev.id + ds,
-        onClick: function () {
-          return onEdit(ev);
-        },
-        style: {
-          display: 'flex',
-          alignItems: 'stretch',
-          padding: '12px 16px',
-          borderBottom: idx < grouped[ds].length - 1 ? '1px solid #f2f2ef' : 'none',
-          cursor: 'pointer',
-          gap: 12
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 3,
-          borderRadius: 2,
-          background: ev.color || '#2d6a4f',
-          flexShrink: 0
-        }
-      }), /*#__PURE__*/React.createElement("div", {
-        style: {
-          flex: 1
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 15,
-          fontWeight: 500,
-          color: '#1a1a18'
-        }
-      }, ev.title), ev.time && /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 12,
-          color: '#6b6b67',
-          marginTop: 2
-        }
-      }, ev.time), recurLbl && /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 11,
-          color: '#a8a8a4',
-          marginTop: 2
-        }
-      }, "\uD83D\uDD01 ", recurLbl), ev.memo && /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 12,
-          color: '#a8a8a4',
-          marginTop: 2
-        }
-      }, ev.memo)));
-    })));
-  }));
-}
-function MoveModal(_ref0) {
-  let ev = _ref0.ev,
-    onMove = _ref0.onMove,
-    onClose = _ref0.onClose;
-  const _useState41 = useState(ev.startDate || ev.date),
-    _useState42 = _slicedToArray(_useState41, 2),
-    newDate = _useState42[0],
-    setNewDate = _useState42[1];
-  return /*#__PURE__*/React.createElement("div", {
-    onClick: onClose,
-    style: {
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,.4)',
-      display: 'flex',
-      alignItems: 'flex-end',
-      zIndex: 300,
-      width: '100vw',
-      maxWidth: '100vw'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    onClick: function (e) {
-      return e.stopPropagation();
-    },
-    style: {
-      background: '#fff',
-      borderRadius: '18px 18px 0 0',
-      padding: '20px 14px 32px',
-      width: '100%',
-      maxWidth: '100vw',
-      margin: '0 auto',
-      boxSizing: 'border-box',
-      overflowX: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 32,
-      height: 3,
-      background: '#e8e8e4',
-      borderRadius: 2,
-      margin: '0 auto 10px'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      marginBottom: 6
-    }
-  }, "\u4E88\u5B9A\u3092\u79FB\u52D5"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: '#6b6b67',
-      marginBottom: 20
-    }
-  }, "\u300C", ev.title, "\u300D\u306E\u79FB\u52D5\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044"), /*#__PURE__*/React.createElement("label", {
-    style: {
-      fontSize: 10,
-      color: '#a8a8a4',
-      fontWeight: 500,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
-      display: 'block',
-      marginBottom: 6
-    }
-  }, "\u79FB\u52D5\u5148\u306E\u65E5\u4ED8"), /*#__PURE__*/React.createElement("input", {
-    type: "date",
-    value: newDate,
-    onChange: function (e) {
-      return setNewDate(e.target.value);
-    },
-    style: {
-      width: '100%',
-      padding: '12px 14px',
-      border: '1.5px solid #e8e8e4',
-      borderRadius: 8,
-      fontSize: 16,
-      fontFamily: 'inherit',
-      background: '#fff',
-      color: '#1a1a18',
-      outline: 'none',
-      marginBottom: 20
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: onClose,
-    style: {
-      padding: 13,
-      borderRadius: 8,
-      fontSize: 14,
-      fontWeight: 500,
-      border: 'none',
-      cursor: 'pointer',
-      background: '#f2f2ef',
-      color: '#6b6b67'
-    }
-  }, "\u30AD\u30E3\u30F3\u30BB\u30EB"), /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      return onMove(newDate);
-    },
-    style: {
-      padding: 13,
-      borderRadius: 8,
-      fontSize: 14,
-      fontWeight: 500,
-      border: 'none',
-      cursor: 'pointer',
-      background: '#2d6a4f',
-      color: '#fff'
-    }
-  }, "\u79FB\u52D5\u3059\u308B"))));
-}
-function PhModal(_ref1) {
-  let events = _ref1.events,
-    state = _ref1.state,
-    setState = _ref1.setState,
-    onClose = _ref1.onClose;
-  const ev = events.find(function (e) {
-    return e.id === state.eid;
-  });
-  const photos = ev ? ev.photos || (ev.photo ? [ev.photo] : []) : [];
-  if (!photos.length) return null;
-  const nav = function (d) {
-    setState(function (p) {
-      return {
-        ...p,
-        i: (p.i + d + photos.length) % photos.length
-      };
     });
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    onClick: onClose,
-    style: {
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      width: '100vw',
-      height: '100vh',
-      background: 'rgba(0,0,0,.92)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 500,
-      cursor: 'pointer'
-    }
-  }, photos.length > 1 && /*#__PURE__*/React.createElement("button", {
-    onClick: function (e) {
-      e.stopPropagation();
-      nav(-1);
-    },
-    style: {
-      position: 'absolute',
-      left: 10,
-      background: 'rgba(255,255,255,.15)',
-      color: '#fff',
-      fontSize: 26,
-      padding: '6px 12px',
-      borderRadius: 8,
-      border: 'none',
-      cursor: 'pointer',
-      zIndex: 1
-    }
-  }, "\u2039"), /*#__PURE__*/React.createElement("img", {
-    src: photos[state.i],
-    style: {
-      maxWidth: '95vw',
-      maxHeight: '90vh',
-      objectFit: 'contain',
-      borderRadius: 8
-    }
-  }), photos.length > 1 && /*#__PURE__*/React.createElement("button", {
-    onClick: function (e) {
-      e.stopPropagation();
-      nav(1);
-    },
-    style: {
-      position: 'absolute',
-      right: 10,
-      background: 'rgba(255,255,255,.15)',
-      color: '#fff',
-      fontSize: 26,
-      padding: '6px 12px',
-      borderRadius: 8,
-      border: 'none',
-      cursor: 'pointer',
-      zIndex: 1
-    }
-  }, "\u203A"), photos.length > 1 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      bottom: 16,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      color: 'rgba(255,255,255,.7)',
-      fontSize: 12
-    }
-  }, state.i + 1, " / ", photos.length));
+  }
+  var days=Object.keys(grouped).sort();
+  if(days.length===0){
+    area.appendChild(el('div',{style:'padding:40px 16px;text-align:center;color:#a8a8a4;font-size:13px;'},'今後の予定はありません'));
+  } else {
+    var wdays=['日','月','火','水','木','金','土'];
+    days.forEach(function(ds){
+      var d=parseDS(ds);
+      var w=wdays[d.getDay()];
+      var isToday2=ds===todayStr;
+      var dayHdr=el('div',{style:'padding:14px 16px 6px;background:#f7f7f5;'});
+      dayHdr.appendChild(el('span',{style:'font-size:13px;font-weight:600;color:'+(isToday2?AC:'#6b6b67')+';'},'',(d.getMonth()+1)+'月'+d.getDate()+'日（'+w+'）'+(isToday2?' 今日':'')));
+      area.appendChild(dayHdr);
+      var block=el('div',{style:'background:#fff;border-top:1px solid #e8e8e4;border-bottom:1px solid #e8e8e4;'});
+      grouped[ds].forEach(function(ev,idx){
+        var item=el('div',{style:'display:flex;align-items:stretch;padding:12px 16px;border-bottom:'+(idx<grouped[ds].length-1?'1px solid #f2f2ef':'none')+';cursor:pointer;gap:12px;'});
+        item.addEventListener('click',function(){state.editEv=ev;state.modal='edit';render();});
+        item.appendChild(el('div',{style:'width:3px;border-radius:2px;background:'+(ev.color||AC)+';flex-shrink:0;'}));
+        var info=el('div',{style:'flex:1;'});
+        info.appendChild(el('div',{style:'font-size:15px;font-weight:500;color:#1a1a18;'},ev.title));
+        if(ev.time)info.appendChild(el('div',{style:'font-size:12px;color:#6b6b67;margin-top:2px;'},ev.time));
+        item.appendChild(info);
+        block.appendChild(item);
+      });
+      area.appendChild(block);
+    });
+  }
+  wrap.appendChild(area);
 }
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
-</script>
-<script>
-if('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(function(e) { console.log('SW:', e); });
+
+// ========== FAB ==========
+function renderFAB(wrap){
+  if(state.modal)return;
+  var fab=el('button',{style:'position:fixed;bottom:24px;right:20px;z-index:200;width:50px;height:50px;border-radius:50%;background:'+AC+';color:#fff;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(45,106,79,.35);'});
+  fab.textContent='＋';
+  fab.addEventListener('click',function(){
+    state.modal='add';
+    state.editEv=null;
+    render();
+  });
+  wrap.appendChild(fab);
 }
+
+// ========== イベントモーダル ==========
+var formState={};
+
+function renderEventModal(wrap){
+  var isEdit=state.modal==='edit';
+  var ev=state.editEv||{};
+  var selStr=toDS(state.sel);
+
+  if(!formState.init||formState.isEdit!==isEdit||formState.evId!==ev.id){
+    formState={
+      init:true, isEdit:isEdit, evId:ev.id,
+      title:ev.title||'',
+      start:ev.startDate||ev.date||selStr,
+      end:ev.endDate||ev.date||selStr,
+      time:ev.time||'',
+      memo:ev.memo||'',
+      color:ev.color||AC,
+      recurrence:ev.recurrence||'none',
+      notifMins:ev.notifMins!=null?ev.notifMins:10,
+    };
+  }
+
+  var overlay=el('div',{style:'position:fixed;left:0;top:0;bottom:0;width:100vw;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;z-index:300;'});
+  overlay.addEventListener('click',function(){state.modal=null;formState={};render();});
+
+  var sheet=el('div',{style:'background:#fff;border-radius:18px 18px 0 0;padding:14px 14px 24px;width:100%;max-height:92vh;overflow-y:auto;'});
+  sheet.addEventListener('click',function(e){e.stopPropagation();});
+
+  sheet.appendChild(el('div',{style:'width:32px;height:3px;background:#e8e8e4;border-radius:2px;margin:0 auto 10px;'}));
+  sheet.appendChild(el('div',{style:'font-size:15px;font-weight:600;margin-bottom:10px;'},isEdit?'予定を編集':'予定を追加'));
+
+  function lbl(t){return el('label',{style:'font-size:9px;color:#a8a8a4;font-weight:500;letter-spacing:0.5px;text-transform:uppercase;display:block;margin-bottom:3px;'},t);}
+  function inp(){return {width:'100%',padding:'8px 10px',border:'1.5px solid #e8e8e4','border-radius':'8px','font-size':'16px','font-family':'inherit',background:'#fff',color:'#1a1a18',outline:'none','margin-bottom':'8px','box-sizing':'border-box'};}
+
+  // タイトル
+  sheet.appendChild(lbl('タイトル'));
+  var titleInp=el('input',{type:'text',placeholder:'例：旅行、誕生日...',style:inp()});
+  titleInp.value=formState.title;
+  titleInp.addEventListener('input',function(){formState.title=this.value;});
+  sheet.appendChild(titleInp);
+
+  // 期間
+  sheet.appendChild(lbl('期間'));
+  var dateRow=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;'});
+  var s1=el('div'); s1.appendChild(el('label',{style:'font-size:10px;color:#a8a8a4;display:block;margin-bottom:4px;'},'開始日'));
+  var startInp=el('input',{type:'date',style:Object.assign(inp(),{'margin-bottom':'0'})});
+  startInp.value=formState.start;
+  startInp.addEventListener('change',function(){formState.start=this.value;if(!formState.end||formState.end<this.value)formState.end=this.value;});
+  s1.appendChild(startInp); dateRow.appendChild(s1);
+  var s2=el('div'); s2.appendChild(el('label',{style:'font-size:10px;color:#a8a8a4;display:block;margin-bottom:4px;'},'終了日'));
+  var endInp=el('input',{type:'date',style:Object.assign(inp(),{'margin-bottom':'0'})});
+  endInp.value=formState.end;
+  endInp.addEventListener('change',function(){formState.end=this.value;});
+  s2.appendChild(endInp); dateRow.appendChild(s2);
+  sheet.appendChild(dateRow);
+
+  // 時間
+  sheet.appendChild(lbl('時間（任意）'));
+  var timeInp=el('input',{type:'time',style:inp()});
+  timeInp.value=formState.time;
+  timeInp.addEventListener('change',function(){formState.time=this.value;});
+  sheet.appendChild(timeInp);
+
+  // 繰り返し
+  sheet.appendChild(lbl('繰り返し'));
+  var recurRow=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px;'});
+  [['none','なし'],['weekly','毎週'],['monthly','毎月'],['yearly','毎年']].forEach(function(item){
+    var btn=el('button',{style:'padding:6px 4px;border-radius:8px;font-size:11px;font-weight:500;border:1.5px solid '+(formState.recurrence===item[0]?AC:'#e8e8e4')+';background:'+(formState.recurrence===item[0]?ACL:'#fff')+';color:'+(formState.recurrence===item[0]?AC:'#6b6b67')+';cursor:pointer;'});
+    btn.textContent=item[1];
+    btn.addEventListener('click',function(){formState.recurrence=item[0];formState.init=false;render();});
+    recurRow.appendChild(btn);
+  });
+  sheet.appendChild(recurRow);
+
+  // メモ
+  sheet.appendChild(lbl('メモ（任意）'));
+  var memoInp=el('textarea',{placeholder:'メモ...',style:Object.assign(inp(),{height:'52px',resize:'none'})});
+  memoInp.value=formState.memo;
+  memoInp.addEventListener('input',function(){formState.memo=this.value;});
+  sheet.appendChild(memoInp);
+
+  // 色
+  sheet.appendChild(lbl('色'));
+  var colorRow=el('div',{style:'display:flex;gap:8px;margin-bottom:8px;'});
+  COLORS.forEach(function(c){
+    var btn=el('button',{style:'width:28px;height:28px;border-radius:50%;background:'+c+';border:3px solid '+(formState.color===c?'#1a1a18':'transparent')+';cursor:pointer;padding:0;'});
+    btn.addEventListener('click',function(){formState.color=c;formState.init=false;render();});
+    colorRow.appendChild(btn);
+  });
+  sheet.appendChild(colorRow);
+
+  // ボタン
+  var btnRow=el('div',{style:'display:grid;grid-template-columns:'+(isEdit?'1fr 1fr 1fr':'1fr 1fr')+';gap:8px;margin-top:6px;'});
+  var cancelBtn=el('button',{style:'padding:10px;border-radius:8px;font-size:13px;font-weight:500;border:none;cursor:pointer;background:#f2f2ef;color:#6b6b67;'});
+  cancelBtn.textContent='キャンセル';
+  cancelBtn.addEventListener('click',function(){state.modal=null;formState={};render();});
+  btnRow.appendChild(cancelBtn);
+
+  if(isEdit){
+    var delBtn=el('button',{style:'padding:10px;border-radius:8px;font-size:13px;font-weight:500;border:none;cursor:pointer;background:#fee;color:#c0392b;'});
+    delBtn.textContent='削除';
+    delBtn.addEventListener('click',function(){
+      if(confirm('削除しますか？')){
+        state.events=state.events.filter(function(x){return x.id!==ev.id;});
+        saveEvents(state.events);
+        state.modal=null;formState={};render();
+      }
+    });
+    btnRow.appendChild(delBtn);
+  }
+
+  var saveBtn=el('button',{style:'padding:10px;border-radius:8px;font-size:13px;font-weight:500;border:none;cursor:pointer;background:'+AC+';color:#fff;'});
+  saveBtn.textContent=isEdit?'更新':'保存';
+  saveBtn.addEventListener('click',function(){
+    if(!formState.title.trim()){alert('タイトルを入力してください');return;}
+    var saved={
+      id:ev.id||Date.now().toString(),
+      title:formState.title.trim(),
+      startDate:formState.start,
+      endDate:formState.end,
+      date:formState.start,
+      time:formState.time,
+      memo:formState.memo,
+      color:formState.color,
+      recurrence:formState.recurrence,
+      notifMins:formState.notifMins,
+      photos:ev.photos||[],
+    };
+    if(isEdit){
+      state.events=state.events.map(function(x){return x.id===ev.id?saved:x;});
+    } else {
+      state.events.push(saved);
+      if(formState.time){state.modal='reminder';state.reminderEv=saved;}
+    }
+    saveEvents(state.events);
+    if(!formState.time||isEdit){state.modal=null;}
+    formState={};
+    render();
+  });
+  btnRow.appendChild(saveBtn);
+  sheet.appendChild(btnRow);
+
+  overlay.appendChild(sheet);
+  wrap.appendChild(overlay);
+  setTimeout(function(){titleInp.focus();},100);
+}
+
+// ========== 移動モーダル ==========
+var moveFormDate='';
+function renderMoveModal(wrap){
+  var ev=state.moveEv;
+  moveFormDate=ev.startDate||ev.date;
+  var overlay=el('div',{style:'position:fixed;left:0;top:0;bottom:0;width:100vw;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;z-index:300;'});
+  overlay.addEventListener('click',function(){state.modal=null;render();});
+  var sheet=el('div',{style:'background:#fff;border-radius:18px 18px 0 0;padding:20px 14px 32px;width:100%;'});
+  sheet.addEventListener('click',function(e){e.stopPropagation();});
+  sheet.appendChild(el('div',{style:'width:32px;height:3px;background:#e8e8e4;border-radius:2px;margin:0 auto 16px;'}));
+  sheet.appendChild(el('div',{style:'font-size:16px;font-weight:600;margin-bottom:6px;'},'予定を移動'));
+  sheet.appendChild(el('div',{style:'font-size:13px;color:#6b6b67;margin-bottom:20px;'},'「'+ev.title+'」の移動先を選んでください'));
+  sheet.appendChild(el('label',{style:'font-size:9px;color:#a8a8a4;font-weight:500;letter-spacing:0.5px;text-transform:uppercase;display:block;margin-bottom:6px;'},'移動先の日付'));
+  var dateInp=el('input',{type:'date',style:'width:100%;padding:12px 14px;border:1.5px solid #e8e8e4;border-radius:8px;font-size:16px;font-family:inherit;background:#fff;color:#1a1a18;outline:none;margin-bottom:20px;box-sizing:border-box;'});
+  dateInp.value=moveFormDate;
+  dateInp.addEventListener('change',function(){moveFormDate=this.value;});
+  sheet.appendChild(dateInp);
+  var btnRow=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:8px;'});
+  var cancelBtn=el('button',{style:'padding:13px;border-radius:8px;font-size:14px;font-weight:500;border:none;cursor:pointer;background:#f2f2ef;color:#6b6b67;'});
+  cancelBtn.textContent='キャンセル';
+  cancelBtn.addEventListener('click',function(){state.modal=null;render();});
+  btnRow.appendChild(cancelBtn);
+  var moveBtn=el('button',{style:'padding:13px;border-radius:8px;font-size:14px;font-weight:500;border:none;cursor:pointer;background:'+AC+';color:#fff;'});
+  moveBtn.textContent='移動する';
+  moveBtn.addEventListener('click',function(){
+    var newDate=moveFormDate;
+    state.events=state.events.map(function(x){
+      if(x.id!==ev.id)return x;
+      var dur=ev.endDate&&ev.startDate?Math.round((parseDS(ev.endDate)-parseDS(ev.startDate))/86400000):0;
+      var newEnd=dur>0?toDS(addDays(parseDS(newDate),dur)):newDate;
+      return Object.assign({},x,{startDate:newDate,endDate:newEnd,date:newDate});
+    });
+    saveEvents(state.events);
+    state.modal=null;
+    showToast(newDate.slice(5).replace('-','月')+'日に移動しました ✓');
+    render();
+  });
+  btnRow.appendChild(moveBtn);
+  sheet.appendChild(btnRow);
+  overlay.appendChild(sheet);
+  wrap.appendChild(overlay);
+}
+
+// ========== リマインダーモーダル ==========
+function renderReminderModal(wrap){
+  var ev=state.reminderEv;
+  var overlay=el('div',{style:'position:fixed;left:0;top:0;bottom:0;width:100vw;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;z-index:300;'});
+  overlay.addEventListener('click',function(){state.modal=null;render();});
+  var sheet=el('div',{style:'background:#fff;border-radius:18px 18px 0 0;padding:20px 16px 32px;width:100%;'});
+  sheet.addEventListener('click',function(e){e.stopPropagation();});
+  sheet.appendChild(el('div',{style:'width:32px;height:3px;background:#e8e8e4;border-radius:2px;margin:0 auto 16px;'}));
+  sheet.appendChild(el('div',{style:'font-size:15px;font-weight:600;margin-bottom:6px;'},'リマインダーに追加しますか？'));
+  sheet.appendChild(el('div',{style:'font-size:13px;color:#6b6b67;margin-bottom:20px;'},'「'+ev.title+'」を標準リマインダーアプリに追加して通知を受け取れます'));
+  var btnRow=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:8px;'});
+  var skipBtn=el('button',{style:'padding:12px;border-radius:8px;font-size:14px;font-weight:500;border:none;cursor:pointer;background:#f2f2ef;color:#6b6b67;'});
+  skipBtn.textContent='スキップ';
+  skipBtn.addEventListener('click',function(){state.modal=null;render();});
+  btnRow.appendChild(skipBtn);
+  var addBtn=el('button',{style:'padding:12px;border-radius:8px;font-size:14px;font-weight:500;border:none;cursor:pointer;background:'+AC+';color:#fff;'});
+  addBtn.textContent='追加する';
+  addBtn.addEventListener('click',function(){
+    var title=encodeURIComponent(ev.title);
+    var notes=encodeURIComponent(ev.memo||'家族カレンダーより');
+    window.location.href='x-apple-reminderkit://REMCDReminder?title='+title+'&notes='+notes;
+    state.modal=null;render();
+  });
+  btnRow.appendChild(addBtn);
+  sheet.appendChild(btnRow);
+  overlay.appendChild(sheet);
+  wrap.appendChild(overlay);
+}
+
+// ========== トースト ==========
+function showToast(msg){
+  var t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:400;white-space:nowrap;';
+  document.body.appendChild(t);
+  setTimeout(function(){t.remove();},2200);
+}
+
+// ========== 初期化 ==========
+render();
 </script>
 </body>
 </html>
