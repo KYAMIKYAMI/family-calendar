@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2d6a4f">
 <title>家族カレンダー</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { background: #f7f7f5; }
@@ -24,7 +24,7 @@ input, select, textarea { font-size: 16px !important; }
 window.onerror = function(msg, src, line, col, err) {
   var d = document.getElementById('error-display');
   d.style.display = 'block';
-  d.innerText = 'ERROR: ' + msg + ' (line:' + line + ')';
+  d.innerText = 'ERROR: ' + msg + ' (line:' + line + ' col:' + col + ')\n' + (err ? err.stack : '');
 };
 window.addEventListener('unhandledrejection', function(e) {
   var d = document.getElementById('error-display');
