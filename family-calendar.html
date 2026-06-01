@@ -219,38 +219,78 @@ function App() {
     _useState10 = _slicedToArray(_useState1, 2),
     viewMode = _useState10[0],
     setViewMode = _useState10[1]; // 'calendar' | 'list'
+  const _useState11 = useState('default'),
+    _useState12 = _slicedToArray(_useState11, 2),
+    notifPerm = _useState12[0],
+    setNotifPerm = _useState12[1];
+  const notifTimers = useRef([]);
+  // 通知許可リクエスト
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(p => setNotifPerm(p));
+    } else if ('Notification' in window) {
+      setNotifPerm(Notification.permission);
+    }
+  }, []);
+
+  // 通知スケジューリング
+  useEffect(() => {
+    // 既存タイマーをクリア
+    notifTimers.current.forEach(t => clearTimeout(t));
+    notifTimers.current = [];
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const now = new Date();
+    events.forEach(ev => {
+      if (!ev.time || !ev.startDate) return;
+      const notifMins = ev.notifMins ?? 10; // デフォルト10分前
+      if (notifMins < 0) return; // 通知なし
+      const evDate = new Date(`${ev.startDate}T${ev.time}:00`);
+      const notifTime = new Date(evDate.getTime() - notifMins * 60000);
+      const ms = notifTime - now;
+      if (ms > 0 && ms < 7 * 24 * 60 * 60 * 1000) {
+        // 7日以内
+        const t = setTimeout(() => {
+          new Notification(`📅 ${ev.title}`, {
+            body: notifMins === 0 ? '予定の時間です' : `${notifMins}分後に始まります`,
+            icon: '/favicon.ico'
+          });
+        }, ms);
+        notifTimers.current.push(t);
+      }
+    });
+  }, [events, notifPerm]);
   const changeViewMode = mode => {
     setViewMode(mode);
     // スクロール位置とズームをリセット
     window.scrollTo(0, 0);
     document.documentElement.style.transform = '';
   };
-  const _useState11 = useState(0),
-    _useState12 = _slicedToArray(_useState11, 2),
-    dailyKey = _useState12[0],
-    setDailyKey = _useState12[1]; // デイリービュー強制更新用
-  const _useState13 = useState(null),
+  const _useState13 = useState(0),
     _useState14 = _slicedToArray(_useState13, 2),
-    moveTarget = _useState14[0],
-    setMoveTarget = _useState14[1]; // {ev, newDate}
+    dailyKey = _useState14[0],
+    setDailyKey = _useState14[1]; // デイリービュー強制更新用
   const _useState15 = useState(null),
     _useState16 = _slicedToArray(_useState15, 2),
-    toast = _useState16[0],
-    setToast = _useState16[1];
+    moveTarget = _useState16[0],
+    setMoveTarget = _useState16[1]; // {ev, newDate}
+  const _useState17 = useState(null),
+    _useState18 = _slicedToArray(_useState17, 2),
+    toast = _useState18[0],
+    setToast = _useState18[1];
   const tmr = useRef(null);
   const todayStr = toDS(new Date());
   const selStr = toDS(sel);
-  const _useState17 = useState(() => {
+  const _useState19 = useState(() => {
       const t = new Date();
       return addDays(weekSunday(new Date(t.getFullYear(), t.getMonth(), 1)), -BUFFER_WEEKS * 7);
     }),
-    _useState18 = _slicedToArray(_useState17, 2),
-    anchorWeek = _useState18[0],
-    setAnchorWeek = _useState18[1];
-  const _useState19 = useState(-(BUFFER_WEEKS * WEEK_H)),
     _useState20 = _slicedToArray(_useState19, 2),
-    translateY = _useState20[0],
-    setTranslateY = _useState20[1];
+    anchorWeek = _useState20[0],
+    setAnchorWeek = _useState20[1];
+  const _useState21 = useState(-(BUFFER_WEEKS * WEEK_H)),
+    _useState22 = _slicedToArray(_useState21, 2),
+    translateY = _useState22[0],
+    setTranslateY = _useState22[1];
   const isCalDrag = useRef(false);
   const calStartY = useRef(0);
   const calStartTY = useRef(0);
@@ -1124,38 +1164,38 @@ function EventModal(_ref3) {
     onClose = _ref3.onClose,
     onDel = _ref3.onDel;
   const isEdit = !!initial;
-  const _useState21 = useState(initial?.title || ''),
-    _useState22 = _slicedToArray(_useState21, 2),
-    title = _useState22[0],
-    setTitle = _useState22[1];
-  const _useState23 = useState(initial?.startDate || initial?.date || toDS(sel)),
+  const _useState23 = useState(initial?.title || ''),
     _useState24 = _slicedToArray(_useState23, 2),
-    start = _useState24[0],
-    setStart = _useState24[1];
-  const _useState25 = useState(initial?.endDate || initial?.startDate || initial?.date || toDS(sel)),
+    title = _useState24[0],
+    setTitle = _useState24[1];
+  const _useState25 = useState(initial?.startDate || initial?.date || toDS(sel)),
     _useState26 = _slicedToArray(_useState25, 2),
-    end = _useState26[0],
-    setEnd = _useState26[1];
-  const _useState27 = useState(initial?.time || ''),
+    start = _useState26[0],
+    setStart = _useState26[1];
+  const _useState27 = useState(initial?.endDate || initial?.startDate || initial?.date || toDS(sel)),
     _useState28 = _slicedToArray(_useState27, 2),
-    time = _useState28[0],
-    setTime = _useState28[1];
-  const _useState29 = useState(initial?.memo || ''),
+    end = _useState28[0],
+    setEnd = _useState28[1];
+  const _useState29 = useState(initial?.time || ''),
     _useState30 = _slicedToArray(_useState29, 2),
-    memo = _useState30[0],
-    setMemo = _useState30[1];
-  const _useState31 = useState(initial?.color || COLORS[0]),
+    time = _useState30[0],
+    setTime = _useState30[1];
+  const _useState31 = useState(initial?.memo || ''),
     _useState32 = _slicedToArray(_useState31, 2),
-    color = _useState32[0],
-    setColor = _useState32[1];
-  const _useState33 = useState(initial?.photos || (initial?.photo ? [initial.photo] : [])),
+    memo = _useState32[0],
+    setMemo = _useState32[1];
+  const _useState33 = useState(initial?.color || COLORS[0]),
     _useState34 = _slicedToArray(_useState33, 2),
-    photos = _useState34[0],
-    setPhotos = _useState34[1];
-  const _useState35 = useState(initial?.recurrence || 'none'),
+    color = _useState34[0],
+    setColor = _useState34[1];
+  const _useState35 = useState(initial?.photos || (initial?.photo ? [initial.photo] : [])),
     _useState36 = _slicedToArray(_useState35, 2),
-    recurrence = _useState36[0],
-    setRecurrence = _useState36[1];
+    photos = _useState36[0],
+    setPhotos = _useState36[1];
+  const _useState37 = useState(initial?.recurrence || 'none'),
+    _useState38 = _slicedToArray(_useState37, 2),
+    recurrence = _useState38[0],
+    setRecurrence = _useState38[1];
   const fileRef = useRef();
   const handleFiles = e => {
     Array.from(e.target.files || []).slice(0, 10 - photos.length).forEach(f => resizeImg(f, url => setPhotos(p => [...p, url])));
@@ -1310,7 +1350,34 @@ function EventModal(_ref3) {
     value: time,
     onChange: e => setTime(e.target.value),
     style: inp
-  }), /*#__PURE__*/React.createElement("label", {
+  }), time && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
+    style: lbl
+  }, "\u901A\u77E5"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4,1fr)',
+      gap: 4,
+      marginBottom: 8
+    }
+  }, [[-1, 'なし'], [0, '当日'], [10, '10分前'], [30, '30分前']].map(_ref4 => {
+    let _ref5 = _slicedToArray(_ref4, 2),
+      val = _ref5[0],
+      lbl2 = _ref5[1];
+    return /*#__PURE__*/React.createElement("button", {
+      key: val,
+      onClick: () => setNotifMins(val),
+      style: {
+        padding: '6px 4px',
+        borderRadius: 8,
+        fontSize: 11,
+        fontWeight: 500,
+        border: `1.5px solid ${notifMins === val ? AC : '#e8e8e4'}`,
+        background: notifMins === val ? ACL : '#fff',
+        color: notifMins === val ? AC : '#6b6b67',
+        cursor: 'pointer'
+      }
+    }, lbl2);
+  }))), /*#__PURE__*/React.createElement("label", {
     style: lbl
   }, "\u7E70\u308A\u8FD4\u3057"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1319,10 +1386,10 @@ function EventModal(_ref3) {
       gap: 4,
       marginBottom: 8
     }
-  }, Object.entries(RECURRENCE_LABELS).map(_ref4 => {
-    let _ref5 = _slicedToArray(_ref4, 2),
-      val = _ref5[0],
-      l2 = _ref5[1];
+  }, Object.entries(RECURRENCE_LABELS).map(_ref6 => {
+    let _ref7 = _slicedToArray(_ref6, 2),
+      val = _ref7[0],
+      l2 = _ref7[1];
     return /*#__PURE__*/React.createElement("button", {
       key: val,
       onClick: () => setRecurrence(val),
@@ -1486,14 +1553,14 @@ function EventModal(_ref3) {
     }
   }, isEdit ? '更新' : '保存'))));
 }
-function DailyView(_ref6) {
-  let sel = _ref6.sel,
-    events = _ref6.events,
-    todayStr = _ref6.todayStr,
-    onEdit = _ref6.onEdit,
-    onMoveStart = _ref6.onMoveStart,
-    onDel = _ref6.onDel,
-    onPhoto = _ref6.onPhoto;
+function DailyView(_ref8) {
+  let sel = _ref8.sel,
+    events = _ref8.events,
+    todayStr = _ref8.todayStr,
+    onEdit = _ref8.onEdit,
+    onMoveStart = _ref8.onMoveStart,
+    onDel = _ref8.onDel,
+    onPhoto = _ref8.onPhoto;
   const selStr = toDS(sel);
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
   const d = sel;
@@ -1685,10 +1752,10 @@ function DailyView(_ref6) {
     })))));
   })));
 }
-function ListView(_ref7) {
-  let events = _ref7.events,
-    todayStr = _ref7.todayStr,
-    onEdit = _ref7.onEdit;
+function ListView(_ref9) {
+  let events = _ref9.events,
+    todayStr = _ref9.todayStr,
+    onEdit = _ref9.onEdit;
   // 今日以降の予定を日付順に並べる
   const sorted = [...events].filter(ev => {
     const d = ev.startDate || ev.date;
@@ -1825,14 +1892,14 @@ function ListView(_ref7) {
     }, ev.memo)));
   })))));
 }
-function MoveModal(_ref8) {
-  let ev = _ref8.ev,
-    onMove = _ref8.onMove,
-    onClose = _ref8.onClose;
-  const _useState37 = useState(ev.startDate || ev.date),
-    _useState38 = _slicedToArray(_useState37, 2),
-    newDate = _useState38[0],
-    setNewDate = _useState38[1];
+function MoveModal(_ref0) {
+  let ev = _ref0.ev,
+    onMove = _ref0.onMove,
+    onClose = _ref0.onClose;
+  const _useState39 = useState(ev.startDate || ev.date),
+    _useState40 = _slicedToArray(_useState39, 2),
+    newDate = _useState40[0],
+    setNewDate = _useState40[1];
   return /*#__PURE__*/React.createElement("div", {
     onClick: onClose,
     style: {
@@ -1937,11 +2004,11 @@ function MoveModal(_ref8) {
     }
   }, "\u79FB\u52D5\u3059\u308B"))));
 }
-function PhModal(_ref9) {
-  let events = _ref9.events,
-    state = _ref9.state,
-    setState = _ref9.setState,
-    onClose = _ref9.onClose;
+function PhModal(_ref1) {
+  let events = _ref1.events,
+    state = _ref1.state,
+    setState = _ref1.setState,
+    onClose = _ref1.onClose;
   const ev = events.find(e => e.id === state.eid);
   const photos = ev ? ev.photos || (ev.photo ? [ev.photo] : []) : [];
   if (!photos.length) return null;
