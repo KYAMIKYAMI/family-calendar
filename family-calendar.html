@@ -17,6 +17,17 @@ input,select,textarea,button{font-family:inherit;font-size:16px;}
 <script>
 // ========== データ ==========
 var SK = 'fc_ev1';
+var CAL_SK = 'fc_cals';
+var DEFAULT_CALS = [
+  {id:'work', name:'仕事', color:'#2980b9', visible:true},
+  {id:'private', name:'プライベート', color:'#2d6a4f', visible:true},
+];
+function loadCals(){
+  try{return JSON.parse(localStorage.getItem(CAL_SK))||DEFAULT_CALS;}catch(e){return DEFAULT_CALS;}
+}
+function saveCals(cals){
+  try{localStorage.setItem(CAL_SK,JSON.stringify(cals));}catch(e){}
+}
 var AC = '#2d6a4f';
 var ACL = '#e8f5ee';
 var COLORS = ['#2d6a4f','#e67e22','#2980b9','#c0392b','#8e44ad'];
@@ -71,6 +82,7 @@ function getHoliday(ds){
 // ========== 状態 ==========
 var state={
   events: loadEvents(),
+  cals: loadCals(),
   sel: new Date(),
   viewMode: 'calendar', // calendar|daily|list
   modal: null, // null|add|edit|move
@@ -146,6 +158,17 @@ function renderHeader(wrap){
     backBtn.textContent='← カレンダー';
     right.appendChild(backBtn);
   } else {
+    // カレンダーフィルターボタン
+    state.cals.forEach(function(cal){
+      var btn=el('button',{style:'background:'+(cal.visible?cal.color:'#f2f2ef')+';border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;color:'+(cal.visible?'#fff':'#a8a8a4')+';cursor:pointer;'});
+      btn.textContent=cal.name;
+      btn.addEventListener('click',function(){
+        cal.visible=!cal.visible;
+        saveCals(state.cals);
+        render();
+      });
+      right.appendChild(btn);
+    });
     var listBtn=el('button',{style:'background:'+(state.viewMode==='list'?AC:'#f2f2ef')+';border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:'+(state.viewMode==='list'?'#fff':'#6b6b67')+';cursor:pointer;',onclick:function(){state.viewMode=state.viewMode==='list'?'calendar':'list';render();}});
     listBtn.textContent=state.viewMode==='list'?'カレンダー':'リスト';
     right.appendChild(listBtn);
@@ -197,7 +220,7 @@ function renderCalendar(wrap){
 
   // カレンダーグリッド
   var grid=el('div',{style:'background:#fff;height:'+(WEEK_H*VISIBLE_WEEKS)+'px;overflow:hidden;width:100%;position:relative;'});
-  var inner=el('div',{style:'position:absolute;top:0;left:0;width:100%;transform:translateY('+state.translateY+'px);will-change:transform;'});
+  var inner=el('div',{id:'cal-inner',style:'position:absolute;top:0;left:0;width:100%;transform:translateY('+state.translateY+'px);will-change:transform;'});
 
   var totalWeeks=VISIBLE_WEEKS+8*2;
   for(var wi=0;wi<totalWeeks;wi++){
@@ -259,6 +282,9 @@ function renderEventBars(wi){
   var ws=toDS(weekStart), we=toDS(weekEnd);
 
   var dayEvs=state.events.filter(function(ev){
+    var calId=ev.calId||'private';
+    var cal=state.cals.find(function(c){return c.id===calId;});
+    if(cal&&!cal.visible)return false;
     var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
     return a<=we&&b>=ws&&(!ev.recurrence||ev.recurrence==='none');
   });
@@ -390,53 +416,89 @@ function setupCalTouch(grid,inner){
       }
     }
     if(Math.abs(calTouchState.vel)>2){
-      momentum(calTouchState.vel,inner);
+      momentum(calTouchState.vel);
     } else {
-      state.translateY=snapY(state.translateY);
-      inner.style.transform='translateY('+state.translateY+'px)';
-      updateDispMonth();
+      doSnap();
     }
   },{passive:false});
 }
 
 function snapY(ty){
+  // まずスナップ位置を計算（副作用なし）
   var sn=Math.round(ty/WEEK_H)*WEEK_H;
-  var buf=4;
-  var tb=buf+Math.round(sn/WEEK_H);
-  var total=VISIBLE_WEEKS+buf*2;
-  if(tb<3){state.anchorWeek=addDays(state.anchorWeek,28);return sn+4*WEEK_H;}
-  if(tb>total-VISIBLE_WEEKS-3){state.anchorWeek=addDays(state.anchorWeek,-28);return sn-4*WEEK_H;}
   return sn;
 }
 
-function momentum(v,inner){
+function recycleIfNeeded(){
+  // anchorWeekのリサイクル（snapY後に呼ぶ）
+  var buf=4;
+  var tb=buf+Math.round(state.translateY/WEEK_H);
+  var total=VISIBLE_WEEKS+buf*2;
+  if(tb<3){
+    state.anchorWeek=addDays(state.anchorWeek,28);
+    state.translateY+=4*WEEK_H;
+    var inner=document.getElementById('cal-inner');
+    if(inner)inner.style.transform='translateY('+state.translateY+'px)';
+  } else if(tb>total-VISIBLE_WEEKS-3){
+    state.anchorWeek=addDays(state.anchorWeek,-28);
+    state.translateY-=4*WEEK_H;
+    var inner=document.getElementById('cal-inner');
+    if(inner)inner.style.transform='translateY('+state.translateY+'px)';
+  }
+}
+
+function momentum(v){
   calTouchState.rafId=requestAnimationFrame(function(){
-    if(Math.abs(v)<0.5){
-      state.translateY=snapY(state.translateY);
-      inner.style.transform='translateY('+state.translateY+'px)';
-      updateDispMonth();
+    v*=0.85;
+    state.translateY+=v;
+    var inner=document.getElementById('cal-inner');
+    if(inner)inner.style.transform='translateY('+state.translateY+'px)';
+    if(Math.abs(v)<1.5){
+      // 速度が十分小さくなったらスナップ
+      doSnap();
       return;
     }
-    v*=0.88;
-    state.translateY+=v;
-    inner.style.transform='translateY('+state.translateY+'px)';
-    momentum(v,inner);
+    momentum(v);
   });
+}
+
+function doSnap(){
+  var snapped=snapY(state.translateY);
+  var from=state.translateY;
+  function snapStep(){
+    var d=snapped-from;
+    if(Math.abs(d)<1){
+      state.translateY=snapped;
+      recycleIfNeeded();
+      updateDispMonth();
+      render();
+      return;
+    }
+    from+=d*0.3;
+    state.translateY=from;
+    var inner=document.getElementById('cal-inner');
+    if(inner)inner.style.transform='translateY('+state.translateY+'px)';
+    calTouchState.rafId=requestAnimationFrame(snapStep);
+  }
+  snapStep();
 }
 
 function animateTo(from,to){
   cancelAnimationFrame(calTouchState.rafId);
   var pos=from;
+  // innerを直接操作してスムーズアニメーション
+  var inner=document.querySelector('#cal-inner');
   function step(){
     var d=to-pos;
-    if(Math.abs(d)<0.8){
+    if(Math.abs(d)<0.5){
       state.translateY=to;
+      updateDispMonth();
       render();
       return;
     }
-    pos+=d*0.2;
+    pos+=d*0.18;
     state.translateY=pos;
-    render();
+    if(inner) inner.style.transform='translateY('+pos+'px)';
     calTouchState.rafId=requestAnimationFrame(step);
   }
   step();
@@ -482,6 +544,10 @@ function renderDayEvents(wrap){
 function getEventsForDate(ds){
   var result=[];
   state.events.forEach(function(ev){
+    // 非表示カレンダーの予定を除外
+    var calId=ev.calId||'private';
+    var cal=state.cals.find(function(c){return c.id===calId;});
+    if(cal&&!cal.visible)return;
     var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
     if(!ev.recurrence||ev.recurrence==='none'){
       if(a<=ds&&ds<=b)result.push(ev);
@@ -702,6 +768,7 @@ function renderEventModal(wrap){
       color:ev.color||AC,
       recurrence:ev.recurrence||'none',
       notifMins:ev.notifMins!=null?ev.notifMins:10,
+      calId:ev.calId||'private',
     };
   }
 
@@ -716,6 +783,24 @@ function renderEventModal(wrap){
 
   function lbl(t){return el('label',{style:'font-size:9px;color:#a8a8a4;font-weight:500;letter-spacing:0.5px;text-transform:uppercase;display:block;margin-bottom:3px;'},t);}
   function inp(){return {width:'100%',padding:'8px 10px',border:'1.5px solid #e8e8e4','border-radius':'8px','font-size':'16px','font-family':'inherit',background:'#fff',color:'#1a1a18',outline:'none','margin-bottom':'8px','box-sizing':'border-box'};}
+
+  // カレンダー選択
+  sheet.appendChild(lbl('カレンダー'));
+  var calRow=el('div',{style:'display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:8px;'});
+  state.cals.forEach(function(cal){
+    var btn=el('button',{style:'padding:8px 4px;border-radius:8px;font-size:12px;font-weight:500;border:2px solid '+(formState.calId===cal.id?cal.color:'#e8e8e4')+';background:'+(formState.calId===cal.id?cal.color:'#fff')+';color:'+(formState.calId===cal.id?'#fff':'#6b6b67')+';cursor:pointer;'});
+    btn.textContent=cal.name;
+    (function(calId, calColor){
+      btn.addEventListener('click',function(){
+        formState.calId=calId;
+        formState.color=calColor;
+        formState.init=false;
+        render();
+      });
+    })(cal.id, cal.color);
+    calRow.appendChild(btn);
+  });
+  sheet.appendChild(calRow);
 
   // タイトル
   sheet.appendChild(lbl('タイトル'));
@@ -809,6 +894,7 @@ function renderEventModal(wrap){
       color:formState.color,
       recurrence:formState.recurrence,
       notifMins:formState.notifMins,
+      calId:formState.calId,
       photos:ev.photos||[],
     };
     if(isEdit){
