@@ -171,12 +171,12 @@ function renderHeader(wrap){
 // ========== カレンダー ==========
 function renderCalendar(wrap){
   // 月ナビ
-  var nav=el('div',{style:'background:#fff;padding:10px 16px 6px;display:flex;align-items:center;justify-content:space-between;'});
+  var nav=el('div',{style:'background:#fff;padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid '+AC+';'});
   var prevBtn=el('button',{style:'background:#f2f2ef;border:none;border-radius:8px;padding:5px 12px;font-size:16px;color:#6b6b67;cursor:pointer;',onclick:function(){
     animateTo(state.translateY, snapY(state.translateY-4*WEEK_H));
   }});
   prevBtn.textContent='‹';
-  var monthLbl=el('span',{style:'font-size:15px;font-weight:600;'},state.dispYear+'年'+(state.dispMonth+1)+'月');
+  var monthLbl=el('span',{style:'font-size:17px;font-weight:700;letter-spacing:0.5px;'},state.dispYear+'年'+(state.dispMonth+1)+'月');
   var nextBtn=el('button',{style:'background:#f2f2ef;border:none;border-radius:8px;padding:5px 12px;font-size:16px;color:#6b6b67;cursor:pointer;',onclick:function(){
     animateTo(state.translateY, snapY(state.translateY+4*WEEK_H));
   }});
