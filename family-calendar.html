@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="家族カレンダー">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2d6a4f">
 <title>家族カレンダー</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -275,22 +277,26 @@ function App() {
     setMoveTarget = _useState16[1]; // {ev, newDate}
   const _useState17 = useState(null),
     _useState18 = _slicedToArray(_useState17, 2),
-    toast = _useState18[0],
-    setToast = _useState18[1];
+    reminderEv = _useState18[0],
+    setReminderEv = _useState18[1]; // リマインダー追加候補
+  const _useState19 = useState(null),
+    _useState20 = _slicedToArray(_useState19, 2),
+    toast = _useState20[0],
+    setToast = _useState20[1];
   const tmr = useRef(null);
   const todayStr = toDS(new Date());
   const selStr = toDS(sel);
-  const _useState19 = useState(() => {
+  const _useState21 = useState(() => {
       const t = new Date();
       return addDays(weekSunday(new Date(t.getFullYear(), t.getMonth(), 1)), -BUFFER_WEEKS * 7);
     }),
-    _useState20 = _slicedToArray(_useState19, 2),
-    anchorWeek = _useState20[0],
-    setAnchorWeek = _useState20[1];
-  const _useState21 = useState(-(BUFFER_WEEKS * WEEK_H)),
     _useState22 = _slicedToArray(_useState21, 2),
-    translateY = _useState22[0],
-    setTranslateY = _useState22[1];
+    anchorWeek = _useState22[0],
+    setAnchorWeek = _useState22[1];
+  const _useState23 = useState(-(BUFFER_WEEKS * WEEK_H)),
+    _useState24 = _slicedToArray(_useState23, 2),
+    translateY = _useState24[0],
+    setTranslateY = _useState24[1];
   const isCalDrag = useRef(false);
   const calStartY = useRef(0);
   const calStartTY = useRef(0);
@@ -328,6 +334,18 @@ function App() {
     saveEv(next);
     showToast('削除しました');
   }, [events, showToast]);
+  const addToReminder = ev => {
+    if (!ev) return;
+    const dt = ev.startDate + (ev.time ? 'T' + ev.time : '');
+    const title = encodeURIComponent(ev.title);
+    const notes = encodeURIComponent(ev.memo || '家族カレンダーより');
+    // iOSリマインダーのURLスキーム
+    const url = `x-apple-reminderkit://REMCDReminder?title=${title}&notes=${notes}`;
+    // フォールバック：カレンダーアプリに追加
+    const calUrl = `calshow:${new Date(dt).getTime() / 1000}`;
+    window.location.href = url;
+    setReminderEv(null);
+  };
   const moveEv = useCallback((id, newDate) => {
     setEvents(prev => {
       const ev = prev.find(e => e.id === id);
@@ -770,7 +788,80 @@ function App() {
       justifyContent: 'center',
       boxShadow: '0 4px 16px rgba(45,106,79,.35)'
     }
-  }, "\uFF0B")), moveTarget && /*#__PURE__*/React.createElement(MoveModal, {
+  }, "\uFF0B")), reminderEv && /*#__PURE__*/React.createElement("div", {
+    onClick: () => setReminderEv(null),
+    style: {
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,.4)',
+      display: 'flex',
+      alignItems: 'flex-end',
+      zIndex: 300,
+      width: '100vw',
+      maxWidth: '100vw'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      background: '#fff',
+      borderRadius: '18px 18px 0 0',
+      padding: '20px 16px 32px',
+      width: '100%',
+      boxSizing: 'border-box'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 32,
+      height: 3,
+      background: '#e8e8e4',
+      borderRadius: 2,
+      margin: '0 auto 16px'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 600,
+      marginBottom: 6
+    }
+  }, "\u30EA\u30DE\u30A4\u30F3\u30C0\u30FC\u306B\u8FFD\u52A0\u3057\u307E\u3059\u304B\uFF1F"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#6b6b67',
+      marginBottom: 20
+    }
+  }, "\u300C", reminderEv.title, "\u300D\u3092\u6A19\u6E96\u30EA\u30DE\u30A4\u30F3\u30C0\u30FC\u30A2\u30D7\u30EA\u306B\u8FFD\u52A0\u3057\u3066\u901A\u77E5\u3092\u53D7\u3051\u53D6\u308C\u307E\u3059"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setReminderEv(null),
+    style: {
+      padding: 12,
+      borderRadius: 8,
+      fontSize: 14,
+      fontWeight: 500,
+      border: 'none',
+      cursor: 'pointer',
+      background: '#f2f2ef',
+      color: '#6b6b67'
+    }
+  }, "\u30B9\u30AD\u30C3\u30D7"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => addToReminder(reminderEv),
+    style: {
+      padding: 12,
+      borderRadius: 8,
+      fontSize: 14,
+      fontWeight: 500,
+      border: 'none',
+      cursor: 'pointer',
+      background: '#2d6a4f',
+      color: '#fff'
+    }
+  }, "\u8FFD\u52A0\u3059\u308B")))), moveTarget && /*#__PURE__*/React.createElement(MoveModal, {
     ev: moveTarget,
     onMove: newDate => {
       moveEv(moveTarget.id, newDate);
@@ -1164,38 +1255,38 @@ function EventModal(_ref3) {
     onClose = _ref3.onClose,
     onDel = _ref3.onDel;
   const isEdit = !!initial;
-  const _useState23 = useState(initial?.title || ''),
-    _useState24 = _slicedToArray(_useState23, 2),
-    title = _useState24[0],
-    setTitle = _useState24[1];
-  const _useState25 = useState(initial?.startDate || initial?.date || toDS(sel)),
+  const _useState25 = useState(initial?.title || ''),
     _useState26 = _slicedToArray(_useState25, 2),
-    start = _useState26[0],
-    setStart = _useState26[1];
-  const _useState27 = useState(initial?.endDate || initial?.startDate || initial?.date || toDS(sel)),
+    title = _useState26[0],
+    setTitle = _useState26[1];
+  const _useState27 = useState(initial?.startDate || initial?.date || toDS(sel)),
     _useState28 = _slicedToArray(_useState27, 2),
-    end = _useState28[0],
-    setEnd = _useState28[1];
-  const _useState29 = useState(initial?.time || ''),
+    start = _useState28[0],
+    setStart = _useState28[1];
+  const _useState29 = useState(initial?.endDate || initial?.startDate || initial?.date || toDS(sel)),
     _useState30 = _slicedToArray(_useState29, 2),
-    time = _useState30[0],
-    setTime = _useState30[1];
-  const _useState31 = useState(initial?.memo || ''),
+    end = _useState30[0],
+    setEnd = _useState30[1];
+  const _useState31 = useState(initial?.time || ''),
     _useState32 = _slicedToArray(_useState31, 2),
-    memo = _useState32[0],
-    setMemo = _useState32[1];
-  const _useState33 = useState(initial?.color || COLORS[0]),
+    time = _useState32[0],
+    setTime = _useState32[1];
+  const _useState33 = useState(initial?.memo || ''),
     _useState34 = _slicedToArray(_useState33, 2),
-    color = _useState34[0],
-    setColor = _useState34[1];
-  const _useState35 = useState(initial?.photos || (initial?.photo ? [initial.photo] : [])),
+    memo = _useState34[0],
+    setMemo = _useState34[1];
+  const _useState35 = useState(initial?.color || COLORS[0]),
     _useState36 = _slicedToArray(_useState35, 2),
-    photos = _useState36[0],
-    setPhotos = _useState36[1];
-  const _useState37 = useState(initial?.recurrence || 'none'),
+    color = _useState36[0],
+    setColor = _useState36[1];
+  const _useState37 = useState(initial?.photos || (initial?.photo ? [initial.photo] : [])),
     _useState38 = _slicedToArray(_useState37, 2),
-    recurrence = _useState38[0],
-    setRecurrence = _useState38[1];
+    photos = _useState38[0],
+    setPhotos = _useState38[1];
+  const _useState39 = useState(initial?.recurrence || 'none'),
+    _useState40 = _slicedToArray(_useState39, 2),
+    recurrence = _useState40[0],
+    setRecurrence = _useState40[1];
   const fileRef = useRef();
   const handleFiles = e => {
     Array.from(e.target.files || []).slice(0, 10 - photos.length).forEach(f => resizeImg(f, url => setPhotos(p => [...p, url])));
@@ -1896,10 +1987,10 @@ function MoveModal(_ref0) {
   let ev = _ref0.ev,
     onMove = _ref0.onMove,
     onClose = _ref0.onClose;
-  const _useState39 = useState(ev.startDate || ev.date),
-    _useState40 = _slicedToArray(_useState39, 2),
-    newDate = _useState40[0],
-    setNewDate = _useState40[1];
+  const _useState41 = useState(ev.startDate || ev.date),
+    _useState42 = _slicedToArray(_useState41, 2),
+    newDate = _useState42[0],
+    setNewDate = _useState42[1];
   return /*#__PURE__*/React.createElement("div", {
     onClick: onClose,
     style: {
@@ -2087,6 +2178,11 @@ function PhModal(_ref1) {
   }, state.i + 1, " / ", photos.length));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+<script>
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(e => console.log('SW error:', e));
+}
 </script>
 </body>
 </html>
