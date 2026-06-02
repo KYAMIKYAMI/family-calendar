@@ -1079,66 +1079,66 @@ function renderEventModal(wrap){
 
   // 写真
   sheet.appendChild(lbl('写真（最大10枚）'));
-  var photoArea=el('div',{style:'margin-bottom:8px;'});
-  // 既存写真サムネイル
-  if(formState.photos&&formState.photos.length>0){
-    var thumbGrid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;'});
-    formState.photos.forEach(function(photo,idx){
-      var src = typeof photo === 'string' ? photo : photo.url;
-      var wrap=el('div',{style:'position:relative;aspect-ratio:1;'});
-      var img=el('img',{src:src,style:'width:100%;height:100%;object-fit:cover;border-radius:6px;'});
-      var del=el('button',{style:'position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;line-height:1;'});
-      del.textContent='×';
-      (function(i){
-        del.addEventListener('click',function(e){
-          e.stopPropagation();
-          formState.photos.splice(i,1);
-          formState.init=false;
-          render();
-        });
-      })(idx);
-      wrap.appendChild(img);
-      wrap.appendChild(del);
-      thumbGrid.appendChild(wrap);
-    });
-    photoArea.appendChild(thumbGrid);
-  }
-  // 追加ボタン
-  if(!formState.photos||formState.photos.length<10){
-    var addPhotoBtn=el('label',{style:'display:block;border:1.5px dashed #e8e8e4;border-radius:8px;padding:10px;text-align:center;cursor:pointer;color:#a8a8a4;font-size:12px;'});
-    addPhotoBtn.textContent='📷 タップして写真を追加';
-    var fileInp=el('input',{type:'file',accept:'image/*',multiple:'multiple'});
-    fileInp.style.display='none';
-    fileInp.addEventListener('change',function(){
-      var files=Array.from(this.files);
-      var remaining=10-(formState.photos||[]).length;
-      files.slice(0,remaining).forEach(function(file){
-        var reader=new FileReader();
-        reader.onload=function(e){
-          var img=new Image();
-          img.onload=function(){
-            var canvas=document.createElement('canvas');
-            var MAX=800;
-            var w=img.width, h=img.height;
-            if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}
-            else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
-            canvas.width=w; canvas.height=h;
-            canvas.getContext('2d').drawImage(img,0,0,w,h);
-            var compressed=canvas.toDataURL('image/jpeg',0.6);
-            if(!formState.photos)formState.photos=[];
-            // プレビュー用にbase64も保持（_pendingフラグ付き）
-            formState.photos.push({url: compressed, pending: true, file: file});
-            formState.init=false;
-            render();
-          };
-          img.src=e.target.result;
-        };
-        reader.readAsDataURL(file);
+  var photoArea=el('div',{id:'photo-area',style:'margin-bottom:8px;'});
+
+  function buildPhotoAreaContent(area){
+    area.innerHTML='';
+    if(formState.photos&&formState.photos.length>0){
+      var thumbGrid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;'});
+      formState.photos.forEach(function(photo,idx){
+        var src=typeof photo==='string'?photo:photo.url;
+        var wrap=el('div',{style:'position:relative;aspect-ratio:1;'});
+        var img=el('img',{src:src,style:'width:100%;height:100%;object-fit:cover;border-radius:6px;'});
+        var del=el('button',{style:'position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;line-height:1;'});
+        del.textContent='×';
+        (function(i){
+          del.addEventListener('click',function(e){
+            e.stopPropagation();
+            formState.photos.splice(i,1);
+            buildPhotoAreaContent(area);
+          });
+        })(idx);
+        wrap.appendChild(img);
+        wrap.appendChild(del);
+        thumbGrid.appendChild(wrap);
       });
-    });
-    addPhotoBtn.appendChild(fileInp);
-    photoArea.appendChild(addPhotoBtn);
+      area.appendChild(thumbGrid);
+    }
+    if(!formState.photos||formState.photos.length<10){
+      var addPhotoBtn=el('label',{style:'display:block;border:1.5px dashed #e8e8e4;border-radius:8px;padding:10px;text-align:center;cursor:pointer;color:#a8a8a4;font-size:12px;'});
+      addPhotoBtn.textContent='📷 タップして写真を追加';
+      var fileInp=el('input',{type:'file',accept:'image/*',multiple:'multiple'});
+      fileInp.style.display='none';
+      fileInp.addEventListener('change',function(){
+        var files=Array.from(this.files);
+        var remaining=10-(formState.photos||[]).length;
+        files.slice(0,remaining).forEach(function(file){
+          var reader=new FileReader();
+          reader.onload=function(e){
+            var imgEl=new Image();
+            imgEl.onload=function(){
+              var canvas=document.createElement('canvas');
+              var MAX=800;
+              var w=imgEl.width,h=imgEl.height;
+              if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}
+              else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
+              canvas.width=w;canvas.height=h;
+              canvas.getContext('2d').drawImage(imgEl,0,0,w,h);
+              var compressed=canvas.toDataURL('image/jpeg',0.6);
+              if(!formState.photos)formState.photos=[];
+              formState.photos.push({url:compressed,pending:true,file:file});
+              buildPhotoAreaContent(area);
+            };
+            imgEl.src=e.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+      addPhotoBtn.appendChild(fileInp);
+      area.appendChild(addPhotoBtn);
+    }
   }
+  buildPhotoAreaContent(photoArea);
   sheet.appendChild(photoArea);
 
   // ボタン
