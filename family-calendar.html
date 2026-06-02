@@ -984,15 +984,7 @@ function renderEventModal(wrap){
   memoInp.addEventListener('input',function(){formState.memo=this.value;});
   sheet.appendChild(memoInp);
 
-  // 色
-  sheet.appendChild(lbl('色'));
-  var colorRow=el('div',{style:'display:flex;gap:8px;margin-bottom:8px;'});
-  COLORS.forEach(function(c){
-    var btn=el('button',{style:'width:28px;height:28px;border-radius:50%;background:'+c+';border:3px solid '+(formState.color===c?'#1a1a18':'transparent')+';cursor:pointer;padding:0;'});
-    btn.addEventListener('click',function(){formState.color=c;formState.init=false;render();});
-    colorRow.appendChild(btn);
-  });
-  sheet.appendChild(colorRow);
+
 
   // 写真
   sheet.appendChild(lbl('写真（最大10枚）'));
