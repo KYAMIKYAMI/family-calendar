@@ -1338,7 +1338,8 @@ function fetchGCalEvents(){
 
 
 function gcalCreateEvent(ev){
-  if(!gcalAccessToken||ev.calId!=='kyami') return;
+  if(!gcalAccessToken){showToast('Googleにログインしてください（G同期ボタン）');return;}
+  if(ev.calId!=='kyami'){return;}
   var body = evToGCalBody(ev);
   fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method:'POST',
@@ -1346,13 +1347,15 @@ function gcalCreateEvent(ev){
     body:JSON.stringify(body)
   }).then(function(r){return r.json();}).then(function(data){
     if(data.id){
-      // GCalのIDを保存
+      showToast('Googleカレンダーに追加しました ✓');
       state.events = state.events.map(function(e){
         return e.id===ev.id ? Object.assign({},e,{gcalId:data.id}) : e;
       });
       saveEvents(state.events);
+    } else {
+      showToast('GCal追加失敗: '+(data.error?data.error.message:'不明'));
     }
-  }).catch(function(){});
+  }).catch(function(e){showToast('GCalエラー: '+e.message);});
 }
 
 function gcalUpdateEvent(ev){
