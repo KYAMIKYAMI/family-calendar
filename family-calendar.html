@@ -1099,8 +1099,14 @@ function renderEventModal(wrap){
     if(isEdit){
       state.events=state.events.map(function(x){return x.id===ev.id?saved:x;});
       state.modal=null;
+      saveEvents(state.events);
+      // Googleカレンダー更新
+      if(saved.calId==='kyami'&&gcalAccessToken) gcalUpdateEvent(saved);
     } else {
       state.events.push(saved);
+      saveEvents(state.events);
+      // Googleカレンダーに追加
+      if(saved.calId==='kyami'&&gcalAccessToken) gcalCreateEvent(saved);
       if(formState.time){
         state.modal='reminder';
         state.reminderEv=saved;
@@ -1108,7 +1114,6 @@ function renderEventModal(wrap){
         state.modal=null;
       }
     }
-    saveEvents(state.events);
     formState={};
     render();
   });
@@ -1153,6 +1158,9 @@ function renderMoveModal(wrap){
       return Object.assign({},x,{startDate:newDate,endDate:newEnd,date:newDate});
     });
     saveEvents(state.events);
+    // Googleカレンダー更新
+    var moved=state.events.find(function(x){return x.id===ev.id;});
+    if(moved&&moved.calId==='kyami'&&gcalAccessToken) gcalUpdateEvent(moved);
     state.modal=null;
     showToast(newDate.slice(5).replace('-','月')+'日に移動しました ✓');
     render();
@@ -1254,7 +1262,7 @@ function showPhotoViewer(photos, startIdx){
 
 // ========== Google Calendar連携 ==========
 var GCAL_CLIENT_ID = '1016400891063-lcsl64mna79hsc6eobmtnt45dkdrskop.apps.googleusercontent.com';
-var GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+var GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar';
 var gcalTokenClient = null;
 var gcalAccessToken = null;
 
@@ -1326,6 +1334,62 @@ function fetchGCalEvents(){
       render();
     })
     .catch(function(e){ alert('同期失敗: '+e.message); });
+}
+
+
+function gcalCreateEvent(ev){
+  if(!gcalAccessToken||!ev.calId==='kyami') return;
+  var body = evToGCalBody(ev);
+  fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+    method:'POST',
+    headers:{Authorization:'Bearer '+gcalAccessToken,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  }).then(function(r){return r.json();}).then(function(data){
+    if(data.id){
+      // GCalのIDを保存
+      state.events = state.events.map(function(e){
+        return e.id===ev.id ? Object.assign({},e,{gcalId:data.id}) : e;
+      });
+      saveEvents(state.events);
+    }
+  }).catch(function(){});
+}
+
+function gcalUpdateEvent(ev){
+  if(!gcalAccessToken||!ev.gcalId) return;
+  var body = evToGCalBody(ev);
+  fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+ev.gcalId, {
+    method:'PUT',
+    headers:{Authorization:'Bearer '+gcalAccessToken,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  }).catch(function(){});
+}
+
+function gcalDeleteEvent(ev){
+  if(!gcalAccessToken||!ev.gcalId) return;
+  fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+ev.gcalId, {
+    method:'DELETE',
+    headers:{Authorization:'Bearer '+gcalAccessToken}
+  }).catch(function(){});
+}
+
+function evToGCalBody(ev){
+  var isAllDay = !ev.time;
+  if(isAllDay){
+    return {
+      summary: ev.title,
+      description: ev.memo||'',
+      start:{date: ev.startDate},
+      end:{date: ev.endDate||ev.startDate},
+    };
+  } else {
+    return {
+      summary: ev.title,
+      description: ev.memo||'',
+      start:{dateTime: ev.startDate+'T'+ev.time+':00', timeZone:'Asia/Tokyo'},
+      end:{dateTime: ev.startDate+'T'+(ev.endTime||ev.time)+':00', timeZone:'Asia/Tokyo'},
+    };
+  }
 }
 
 // ========== 初期化 ==========
