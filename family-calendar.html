@@ -15,6 +15,7 @@ input,select,textarea,button{font-family:inherit;font-size:16px;}
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -39,6 +40,7 @@ var firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
+var storage = firebase.storage();
 
 // ユーザー判定（?user=wifeで妻モード）
 var IS_WIFE = location.search.indexOf('user=wife') !== -1;
@@ -145,6 +147,16 @@ function loadEvents(){
 
 // Firebase個別削除ヘルパー
 function deleteEvent(evId, calId){
+  // 削除するイベントの写真をStorageから削除
+  var evToDelete = state.events.find(function(x){ return x.id === evId; });
+  if(evToDelete && evToDelete.photos && evToDelete.photos.length > 0){
+    evToDelete.photos.forEach(function(photo){
+      var url = typeof photo === 'string' ? photo : photo.url;
+      if(url && url.startsWith('https://')){
+        try{ storage.refFromURL(url).delete().catch(function(){}); }catch(e){}
+      }
+    });
+  }
   state.events = state.events.filter(function(x){return x.id !== evId;});
   if(SHARED_CAL_IDS.includes(calId||'private')){
     var key = evId.replace(/[.#$\[\]]/g,'_');
@@ -751,7 +763,8 @@ function renderEvCard(ev){
   // 写真サムネイル
   if(ev.photos&&ev.photos.length>0){
     var pGrid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:6px;'});
-    ev.photos.forEach(function(src,pi){
+    ev.photos.forEach(function(photo,pi){
+      var src = typeof photo === 'string' ? photo : photo.url;
       var img=el('img',{src:src,style:'width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;cursor:pointer;'});
       (function(i){
         img.addEventListener('click',function(e){
@@ -848,7 +861,8 @@ function renderDaily(wrap){
       // 写真サムネイル
       if(ev.photos&&ev.photos.length>0){
         var pGrid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px;'});
-        ev.photos.forEach(function(src,pi){
+        ev.photos.forEach(function(photo,pi){
+          var src = typeof photo === 'string' ? photo : photo.url;
           var img=el('img',{src:src,style:'width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;'});
           (function(i,photos){
             img.addEventListener('click',function(e){
@@ -1069,7 +1083,8 @@ function renderEventModal(wrap){
   // 既存写真サムネイル
   if(formState.photos&&formState.photos.length>0){
     var thumbGrid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;'});
-    formState.photos.forEach(function(src,idx){
+    formState.photos.forEach(function(photo,idx){
+      var src = typeof photo === 'string' ? photo : photo.url;
       var wrap=el('div',{style:'position:relative;aspect-ratio:1;'});
       var img=el('img',{src:src,style:'width:100%;height:100%;object-fit:cover;border-radius:6px;'});
       var del=el('button',{style:'position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;line-height:1;'});
@@ -1100,7 +1115,6 @@ function renderEventModal(wrap){
       files.slice(0,remaining).forEach(function(file){
         var reader=new FileReader();
         reader.onload=function(e){
-          // 画像を圧縮
           var img=new Image();
           img.onload=function(){
             var canvas=document.createElement('canvas');
@@ -1112,7 +1126,8 @@ function renderEventModal(wrap){
             canvas.getContext('2d').drawImage(img,0,0,w,h);
             var compressed=canvas.toDataURL('image/jpeg',0.6);
             if(!formState.photos)formState.photos=[];
-            formState.photos.push(compressed);
+            // プレビュー用にbase64も保持（_pendingフラグ付き）
+            formState.photos.push({url: compressed, pending: true, file: file});
             formState.init=false;
             render();
           };
@@ -1149,41 +1164,82 @@ function renderEventModal(wrap){
   saveBtn.textContent=isEdit?'更新':'保存';
   saveBtn.addEventListener('click',function(){
     if(!formState.title.trim()){alert('タイトルを入力してください');return;}
-    var saved={
-      id:ev.id||Date.now().toString(),
-      title:formState.title.trim(),
-      startDate:formState.start,
-      endDate:formState.end,
-      date:formState.start,
-      time:formState.time,
-      endTime:formState.endTime,
-      memo:formState.memo,
-      color:formState.color,
-      recurrence:formState.recurrence,
-      notifMins:formState.notifMins,
-      calId:formState.calId,
-      photos:(isEdit ? (ev.photos||[]) : (formState.photos||[])),
-    };
-    if(isEdit){
-      state.events=state.events.map(function(x){return x.id===ev.id?saved:x;});
-      state.modal=null;
-      saveEvents(state.events);
-      // Googleカレンダー更新
-      if(saved.calId==='kyami'&&gcalAccessToken) gcalUpdateEvent(saved);
-    } else {
-      state.events.push(saved);
-      saveEvents(state.events);
-      // Googleカレンダーに追加
-      if(saved.calId==='kyami'&&gcalAccessToken) gcalCreateEvent(saved);
-      if(formState.time){
-        state.modal='reminder';
-        state.reminderEv=saved;
-      } else {
+
+    // 保存処理（写真アップロード後）
+    function doSave(photoUrls){
+      var saved={
+        id:ev.id||Date.now().toString(),
+        title:formState.title.trim(),
+        startDate:formState.start,
+        endDate:formState.end,
+        date:formState.start,
+        time:formState.time,
+        endTime:formState.endTime,
+        memo:formState.memo,
+        color:formState.color,
+        recurrence:formState.recurrence,
+        notifMins:formState.notifMins,
+        calId:formState.calId,
+        photos: photoUrls,
+      };
+      if(isEdit){
+        state.events=state.events.map(function(x){return x.id===ev.id?saved:x;});
         state.modal=null;
+        saveEvents(state.events);
+        if(saved.calId==='kyami'&&gcalAccessToken) gcalUpdateEvent(saved);
+        formState={};render();
+      } else {
+        state.events.push(saved);
+        saveEvents(state.events);
+        if(saved.calId==='kyami'&&gcalAccessToken) gcalCreateEvent(saved);
+        if(formState.time){
+          state.modal='reminder';
+          state.reminderEv=saved;
+        } else {
+          state.modal=null;
+        }
+        formState={};render();
       }
     }
-    formState={};
-    render();
+
+    // 写真をStorageにアップロード
+    var photos = formState.photos || [];
+    var pendingPhotos = photos.filter(function(p){ return typeof p === 'object' && p.pending; });
+    var existingUrls = photos.filter(function(p){ return typeof p === 'string'; });
+
+    if(pendingPhotos.length === 0){
+      doSave(existingUrls);
+    } else {
+      saveBtn.disabled = true;
+      saveBtn.textContent = '保存中...';
+      var uploadedUrls = [];
+      var evId = ev.id || Date.now().toString();
+      var done = 0;
+      pendingPhotos.forEach(function(photo, idx){
+        // base64をBlobに変換
+        var arr = photo.url.split(','), mime = arr[0].match(/:(.*?);/)[1];
+        var bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+        var blob = new Blob([u8arr], {type: mime});
+        var ref = storage.ref('photos/' + evId + '/' + Date.now() + '_' + idx + '.jpg');
+        ref.put(blob).then(function(snap){
+          return snap.ref.getDownloadURL();
+        }).then(function(url){
+          uploadedUrls.push(url);
+          done++;
+          if(done === pendingPhotos.length){
+            doSave(existingUrls.concat(uploadedUrls));
+          }
+        }).catch(function(e){
+          console.error('写真アップロードエラー:', e);
+          done++;
+          if(done === pendingPhotos.length){
+            doSave(existingUrls.concat(uploadedUrls));
+          }
+        });
+      });
+    }
+    return; // doSave内でrender()を呼ぶので早期return
   });
   btnRow.appendChild(saveBtn);
   sheet.appendChild(btnRow);
@@ -1281,12 +1337,13 @@ function showToast(msg){
 // ========== 写真拡大モーダル ==========
 function showPhotoViewer(photos, startIdx){
   var idx=startIdx||0;
+  function getUrl(p){ return typeof p === 'string' ? p : p.url; }
   var overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,.92);z-index:500;display:flex;align-items:center;justify-content:center;';
 
   var img=document.createElement('img');
   img.style.cssText='max-width:95vw;max-height:85vh;object-fit:contain;border-radius:8px;';
-  img.src=photos[idx];
+  img.src=getUrl(photos[idx]);
 
   var counter=document.createElement('div');
   counter.style.cssText='position:absolute;top:16px;right:16px;color:#fff;font-size:13px;background:rgba(0,0,0,.4);padding:4px 10px;border-radius:12px;';
@@ -1298,7 +1355,7 @@ function showPhotoViewer(photos, startIdx){
   closeBtn.addEventListener('click',function(){document.body.removeChild(overlay);});
 
   function update(){
-    img.src=photos[idx];
+    img.src=getUrl(photos[idx]);
     counter.textContent=(idx+1)+'/'+photos.length;
   }
 
