@@ -1338,7 +1338,7 @@ function fetchGCalEvents(){
 
 
 function gcalCreateEvent(ev){
-  if(!gcalAccessToken||!ev.calId==='kyami') return;
+  if(!gcalAccessToken||ev.calId!=='kyami') return;
   var body = evToGCalBody(ev);
   fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method:'POST',
