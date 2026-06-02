@@ -11,6 +11,7 @@
 body{font-family:-apple-system,Hiragino Sans,sans-serif;background:#f7f7f5;color:#1a1a18;}
 input,select,textarea,button{font-family:inherit;font-size:16px;}
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <div id="app"></div>
@@ -20,10 +21,22 @@ var SK = 'fc_ev1';
 var CAL_SK = 'fc_cals';
 var DEFAULT_CALS = [
   {id:'work', name:'仕事', color:'#2980b9', visible:true},
-  {id:'private', name:'プライベート', color:'#2d6a4f', visible:true},
+  {id:'private', name:'いっちゃん', color:'#2d6a4f', visible:true},
+  {id:'kyami', name:'キャミー', color:'#e67e22', visible:true},
+  {id:'yui', name:'唯', color:'#8e44ad', visible:true},
 ];
 function loadCals(){
-  try{return JSON.parse(localStorage.getItem(CAL_SK))||DEFAULT_CALS;}catch(e){return DEFAULT_CALS;}
+  try{
+    var saved=JSON.parse(localStorage.getItem(CAL_SK));
+    if(!saved)return DEFAULT_CALS;
+    // 新しいデフォルトカレンダーを追加（既存は保持）
+    DEFAULT_CALS.forEach(function(dc){
+      if(!saved.find(function(s){return s.id===dc.id;})){
+        saved.push(dc);
+      }
+    });
+    return saved;
+  }catch(e){return DEFAULT_CALS;}
 }
 function saveCals(cals){
   try{localStorage.setItem(CAL_SK,JSON.stringify(cals));}catch(e){}
@@ -31,7 +44,7 @@ function saveCals(cals){
 var AC = '#2d6a4f';
 var ACL = '#e8f5ee';
 var COLORS = ['#2d6a4f','#e67e22','#2980b9','#c0392b','#8e44ad'];
-var WEEK_H = 62;
+var WEEK_H = 76;
 var VISIBLE_WEEKS = 6;
 
 function toDS(d){
@@ -45,7 +58,20 @@ function loadEvents(){
   try{return JSON.parse(localStorage.getItem(SK)||'[]');}catch(e){return [];}
 }
 function saveEvents(evs){
-  try{localStorage.setItem(SK,JSON.stringify(evs));}catch(e){}
+  try{
+    localStorage.setItem(SK,JSON.stringify(evs));
+  }catch(e){
+    // 容量オーバーの場合、写真を除いて保存を試みる
+    try{
+      var slim=evs.map(function(ev){
+        return Object.assign({},ev,{photos:[]});
+      });
+      localStorage.setItem(SK,JSON.stringify(slim));
+      alert('写真データが大きすぎるため写真なしで保存しました。写真は1枚ずつ追加してください。');
+    }catch(e2){
+      alert('保存できませんでした: '+e2.message);
+    }
+  }
 }
 
 // ========== 祝日 ==========
@@ -150,8 +176,8 @@ function txt(s){return document.createTextNode(s);}
 
 // ========== ヘッダー ==========
 function renderHeader(wrap){
-  var h=el('div',{style:'background:#fff;border-bottom:1px solid #e8e8e4;padding:13px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;'});
-  var left=el('span',{style:'font-size:15px;font-weight:600;'},'📅 家族カレンダー');
+  var h=el('div',{style:'background:#fff;border-bottom:1px solid #e8e8e4;padding:8px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;'});
+  var left=el('span',{style:'font-size:13px;font-weight:600;'},'📅 家族カレンダー');
   var right=el('div',{style:'display:flex;gap:8px;align-items:center;'});
   if(state.viewMode==='daily'){
     var backBtn=el('button',{style:'background:#f2f2ef;border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:#6b6b67;cursor:pointer;',onclick:function(){state.viewMode='calendar';render();}});
@@ -160,7 +186,7 @@ function renderHeader(wrap){
   } else {
     // カレンダーフィルターボタン
     state.cals.forEach(function(cal){
-      var btn=el('button',{style:'background:'+(cal.visible?cal.color:'#f2f2ef')+';border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;color:'+(cal.visible?'#fff':'#a8a8a4')+';cursor:pointer;'});
+      var btn=el('button',{style:'background:'+(cal.visible?cal.color:'#f2f2ef')+';border:none;border-radius:8px;padding:3px 6px;font-size:10px;font-weight:600;color:'+(cal.visible?'#fff':'#a8a8a4')+';cursor:pointer;'});
       btn.textContent=cal.name;
       btn.addEventListener('click',function(){
         cal.visible=!cal.visible;
@@ -211,10 +237,10 @@ function renderCalendar(wrap){
 
   // 曜日ヘッダー
   var days=['日','月','火','水','木','金','土'];
-  var dayHdr=el('div',{style:'background:#fff;display:grid;grid-template-columns:repeat(7,1fr);text-align:center;padding:4px 6px;border-bottom:1px solid #e8e8e4;width:100%;'});
+  var dayHdr=el('div',{style:'background:#fff;display:grid;grid-template-columns:repeat(7,1fr);text-align:center;padding:2px 4px;border-bottom:1px solid #e8e8e4;width:100%;'});
   days.forEach(function(d,i){
     var c=i===0?'#c0392b':i===6?'#2980b9':'#6b6b67';
-    dayHdr.appendChild(el('div',{style:'font-size:10px;font-weight:600;color:'+c+';padding:2px 0;'},d));
+    dayHdr.appendChild(el('div',{style:'font-size:10px;font-weight:600;color:'+c+';padding:1px 0;'},d));
   });
   wrap.appendChild(dayHdr);
 
@@ -289,8 +315,11 @@ function renderEventBars(wi){
     return a<=we&&b>=ws&&(!ev.recurrence||ev.recurrence==='none');
   });
 
-  // 繰り返し予定
+  // 繰り返し予定（1日単位で追加）
   state.events.filter(function(ev){return ev.recurrence&&ev.recurrence!=='none';}).forEach(function(ev){
+    var calId=ev.calId||'private';
+    var cal=state.cals.find(function(c){return c.id===calId;});
+    if(cal&&!cal.visible)return;
     for(var i=0;i<7;i++){
       var d=addDays(weekStart,i);
       var ds=toDS(d);
@@ -300,29 +329,44 @@ function renderEventBars(wi){
     }
   });
 
+  // ソート：終日（複数日）→時間なし→時間早い順
+  dayEvs.sort(function(a,b){
+    var aMulti=(a.startDate||a.date)!==(a.endDate||a.date||a.startDate);
+    var bMulti=(b.startDate||b.date)!==(b.endDate||b.date||b.startDate);
+    if(aMulti&&!bMulti) return -1;
+    if(!aMulti&&bMulti) return 1;
+    var at=a.time||''; var bt=b.time||'';
+    if(!at&&bt) return -1;
+    if(at&&!bt) return 1;
+    return at.localeCompare(bt);
+  });
+
   // レーン割り当て（最大3本）
-  var lanes=[];
+  var lanes=[[],[],[],[]];
   dayEvs.forEach(function(ev){
     var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
-    var cs=Math.max(0,Math.floor((parseDS(a)-parseDS(ws))/(86400000)));
-    var ce=Math.min(6,Math.floor((parseDS(b)-parseDS(ws))/(86400000)));
-    cs=Math.max(0,cs); ce=Math.min(6,ce);
+    // csとceを日数差で計算
+    var aDate=parseDS(a), bDate=parseDS(b), wsDate=parseDS(ws);
+    var cs=Math.round((aDate-wsDate)/86400000);
+    var ce=Math.round((bDate-wsDate)/86400000);
+    cs=Math.max(0,Math.min(6,cs));
+    ce=Math.max(0,Math.min(6,ce));
+    if(cs>ce)return; // この週に表示範囲なし
     var lane=-1;
-    for(var l=0;l<3;l++){
-      if(!lanes[l])lanes[l]=[];
+    for(var l=0;l<4;l++){
       var ok=true;
       for(var x=0;x<lanes[l].length;x++){
-        if(!(ce<lanes[l][x].cs||cs>lanes[l][x].ce)){ok=false;break;}
+        // 重なりチェック
+        if(cs<=lanes[l][x].ce&&ce>=lanes[l][x].cs){ok=false;break;}
       }
       if(ok){lane=l;break;}
     }
     if(lane>=0){
-      if(!lanes[lane])lanes[lane]=[];
       lanes[lane].push({ev:ev,cs:cs,ce:ce});
     }
   });
 
-  for(var l=0;l<Math.min(3,lanes.length);l++){
+  for(var l=0;l<Math.min(4,lanes.length);l++){
     if(!lanes[l])continue;
     var laneEl=el('div',{style:'display:grid;grid-template-columns:repeat(7,1fr);height:11px;margin-bottom:1px;'});
     var used=new Set();
@@ -344,7 +388,6 @@ function renderEventBars(wi){
       for(var x=item.cs;x<=item.ce;x++)used.add(x);
       laneEl.appendChild(bar);
     });
-    for(var x=0;x<7;x++){if(!used.has(x))laneEl.appendChild(el('div',{style:'grid-column:'+(x+1)+';'}));}
     area.appendChild(laneEl);
   }
   return area;
@@ -529,7 +572,20 @@ function renderDayEvents(wrap){
   area.appendChild(hdr);
 
   var dayEvs=getEventsForDate(selStr);
-  dayEvs.sort(function(a,b){return (a.time||'99:99').localeCompare(b.time||'99:99');});
+  dayEvs.sort(function(a,b){
+    // 1. 複数日にまたがる予定（終日）を先頭
+    var aMulti=(a.startDate||a.date)!==(a.endDate||a.date||a.startDate);
+    var bMulti=(b.startDate||b.date)!==(b.endDate||b.date||b.startDate);
+    if(aMulti&&!bMulti) return -1;
+    if(!aMulti&&bMulti) return 1;
+    // 2. 時間なしを次
+    var at=a.time||''; var bt=b.time||'';
+    if(!at&&bt) return -1;
+    if(at&&!bt) return 1;
+    if(!at&&!bt) return 0;
+    // 3. 時間早い順
+    return at.localeCompare(bt);
+  });
 
   if(dayEvs.length===0){
     area.appendChild(el('div',{style:'font-size:13px;color:#a8a8a4;padding:12px 0;'},'予定はありません'));
@@ -570,14 +626,12 @@ function renderEvCard(ev){
   var row=el('div',{style:'display:flex;align-items:flex-start;'});
   var info=el('div',{style:'flex:1;'});
   info.appendChild(el('div',{style:'font-size:14px;font-weight:500;'},ev.title));
-  if(ev.time)info.appendChild(el('div',{style:'font-size:12px;color:#6b6b67;margin-top:2px;'},'🕐 '+ev.time));
+  if(ev.time)info.appendChild(el('div',{style:'font-size:12px;color:#6b6b67;margin-top:2px;'},'🕐 '+ev.time+(ev.endTime?' ～ '+ev.endTime:'')));
   if(ev.recurrence&&ev.recurrence!=='none'){
     var rl={'weekly':'毎週','monthly':'毎月','yearly':'毎年'};
     info.appendChild(el('div',{style:'font-size:11px;color:#a8a8a4;margin-top:2px;'},'🔁 '+rl[ev.recurrence]));
   }
   if(ev.memo)info.appendChild(el('div',{style:'font-size:12px;color:#6b6b67;margin-top:2px;'},ev.memo));
-  row.appendChild(info);
-
   var btns=el('div',{style:'display:flex;gap:4px;align-items:center;'});
   if(canMove){
     var moveBtn=el('button',{style:'background:'+AC+';border:none;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;border-radius:6px;'});
@@ -601,8 +655,24 @@ function renderEvCard(ev){
     }
   });
   btns.appendChild(delBtn);
+  row.appendChild(info);
   row.appendChild(btns);
   card.appendChild(row);
+  // 写真サムネイル
+  if(ev.photos&&ev.photos.length>0){
+    var pGrid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:6px;'});
+    ev.photos.forEach(function(src,pi){
+      var img=el('img',{src:src,style:'width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;cursor:pointer;'});
+      (function(i){
+        img.addEventListener('click',function(e){
+          e.stopPropagation();
+          showPhotoViewer(ev.photos,i);
+        });
+      })(pi);
+      pGrid.appendChild(img);
+    });
+    card.appendChild(pGrid);
+  }
   return card;
 }
 
@@ -632,7 +702,20 @@ function renderDaily(wrap){
   area.appendChild(hdr);
 
   var dayEvs=getEventsForDate(selStr);
-  dayEvs.sort(function(a,b){return (a.time||'99:99').localeCompare(b.time||'99:99');});
+  dayEvs.sort(function(a,b){
+    // 1. 複数日にまたがる予定（終日）を先頭
+    var aMulti=(a.startDate||a.date)!==(a.endDate||a.date||a.startDate);
+    var bMulti=(b.startDate||b.date)!==(b.endDate||b.date||b.startDate);
+    if(aMulti&&!bMulti) return -1;
+    if(!aMulti&&bMulti) return 1;
+    // 2. 時間なしを次
+    var at=a.time||''; var bt=b.time||'';
+    if(!at&&bt) return -1;
+    if(at&&!bt) return 1;
+    if(!at&&!bt) return 0;
+    // 3. 時間早い順
+    return at.localeCompare(bt);
+  });
 
   if(dayEvs.length===0){
     area.appendChild(el('div',{style:'padding:48px 20px;text-align:center;color:#a8a8a4;font-size:14px;'},'この日の予定はありません'));
@@ -650,7 +733,7 @@ function renderDaily(wrap){
       var row=el('div',{style:'display:flex;align-items:flex-start;justify-content:space-between;'});
       var info=el('div',{style:'flex:1;'});
       info.appendChild(el('div',{style:'font-size:16px;font-weight:500;color:#1a1a18;'},ev.title));
-      if(ev.time)info.appendChild(el('div',{style:'font-size:13px;color:#6b6b67;margin-top:3px;'},'🕐 '+ev.time));
+      if(ev.time)info.appendChild(el('div',{style:'font-size:13px;color:#6b6b67;margin-top:3px;'},'🕐 '+ev.time+(ev.endTime?' ～ '+ev.endTime:'')));
       if(ev.memo)info.appendChild(el('div',{style:'font-size:13px;color:#6b6b67;margin-top:3px;'},'📝 '+ev.memo));
       row.appendChild(info);
       var btns=el('div',{style:'display:flex;gap:6px;align-items:center;margin-left:8px;'});
@@ -673,6 +756,21 @@ function renderDaily(wrap){
       btns.appendChild(db);
       row.appendChild(btns);
       inner.appendChild(row);
+      // 写真サムネイル
+      if(ev.photos&&ev.photos.length>0){
+        var pGrid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px;'});
+        ev.photos.forEach(function(src,pi){
+          var img=el('img',{src:src,style:'width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;'});
+          (function(i,photos){
+            img.addEventListener('click',function(e){
+              e.stopPropagation();
+              showPhotoViewer(photos,i);
+            });
+          })(pi,ev.photos);
+          pGrid.appendChild(img);
+        });
+        inner.appendChild(pGrid);
+      }
       item.appendChild(inner);
       list.appendChild(item);
     });
@@ -757,18 +855,22 @@ function renderEventModal(wrap){
   var ev=state.editEv||{};
   var selStr=toDS(state.sel);
 
-  if(!formState.init||formState.isEdit!==isEdit||formState.evId!==ev.id){
+  // モーダルを初めて開くときだけ初期化（カレンダー選択等の変更時は維持）
+  if(!formState.init || formState.evId !== (ev.id||'new') || formState.isEdit !== isEdit){
+    var defaultCal = state.cals[0]||{id:'private',color:AC};
     formState={
-      init:true, isEdit:isEdit, evId:ev.id,
+      init:true, isEdit:isEdit, evId:ev.id||'new',
       title:ev.title||'',
       start:ev.startDate||ev.date||selStr,
       end:ev.endDate||ev.date||selStr,
       time:ev.time||'',
+      endTime:ev.endTime||'',
       memo:ev.memo||'',
-      color:ev.color||AC,
+      color:ev.color||(ev.calId?state.cals.find(function(c){return c.id===ev.calId;})||defaultCal:defaultCal).color,
       recurrence:ev.recurrence||'none',
       notifMins:ev.notifMins!=null?ev.notifMins:10,
-      calId:ev.calId||'private',
+      calId:ev.calId||defaultCal.id,
+      photos:(isEdit ? (ev.photos||[]) : (formState.photos||[])),
     };
   }
 
@@ -787,18 +889,27 @@ function renderEventModal(wrap){
   // カレンダー選択
   sheet.appendChild(lbl('カレンダー'));
   var calRow=el('div',{style:'display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:8px;'});
-  state.cals.forEach(function(cal){
-    var btn=el('button',{style:'padding:8px 4px;border-radius:8px;font-size:12px;font-weight:500;border:2px solid '+(formState.calId===cal.id?cal.color:'#e8e8e4')+';background:'+(formState.calId===cal.id?cal.color:'#fff')+';color:'+(formState.calId===cal.id?'#fff':'#6b6b67')+';cursor:pointer;'});
+  var calBtns=[];
+  state.cals.forEach(function(cal,idx){
+    var isSelected=formState.calId===cal.id;
+    var btn=el('button',{style:'padding:8px 4px;border-radius:8px;font-size:12px;font-weight:500;border:2px solid '+(isSelected?cal.color:'#e8e8e4')+';background:'+(isSelected?cal.color:'#fff')+';color:'+(isSelected?'#fff':'#6b6b67')+';cursor:pointer;'});
     btn.textContent=cal.name;
-    (function(calId, calColor){
-      btn.addEventListener('click',function(){
-        formState.calId=calId;
-        formState.color=calColor;
-        formState.init=false;
-        render();
-      });
-    })(cal.id, cal.color);
+    calBtns.push({btn:btn,cal:cal});
     calRow.appendChild(btn);
+  });
+  // clickはcalBtns生成後にまとめて登録（renderを呼ばずDOMだけ更新）
+  calBtns.forEach(function(item){
+    item.btn.addEventListener('click',function(){
+      formState.calId=item.cal.id;
+      formState.color=item.cal.color;
+      // 全ボタンのスタイルを更新
+      calBtns.forEach(function(x){
+        var sel=x.cal.id===formState.calId;
+        x.btn.style.background=sel?x.cal.color:'#fff';
+        x.btn.style.color=sel?'#fff':'#6b6b67';
+        x.btn.style.border='2px solid '+(sel?x.cal.color:'#e8e8e4');
+      });
+    });
   });
   sheet.appendChild(calRow);
 
@@ -826,10 +937,22 @@ function renderEventModal(wrap){
 
   // 時間
   sheet.appendChild(lbl('時間（任意）'));
-  var timeInp=el('input',{type:'time',style:inp()});
-  timeInp.value=formState.time;
-  timeInp.addEventListener('change',function(){formState.time=this.value;});
-  sheet.appendChild(timeInp);
+  var timeRow=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;'});
+  var t1=el('div');
+  t1.appendChild(el('label',{style:'font-size:10px;color:#a8a8a4;display:block;margin-bottom:4px;'},'開始時間'));
+  var startTimeInp=el('input',{type:'time',style:Object.assign(inp(),{'margin-bottom':'0'})});
+  startTimeInp.value=formState.time||'';
+  startTimeInp.addEventListener('change',function(){formState.time=this.value;});
+  t1.appendChild(startTimeInp);
+  timeRow.appendChild(t1);
+  var t2=el('div');
+  t2.appendChild(el('label',{style:'font-size:10px;color:#a8a8a4;display:block;margin-bottom:4px;'},'終了時間'));
+  var endTimeInp=el('input',{type:'time',style:Object.assign(inp(),{'margin-bottom':'0'})});
+  endTimeInp.value=formState.endTime||'';
+  endTimeInp.addEventListener('change',function(){formState.endTime=this.value;});
+  t2.appendChild(endTimeInp);
+  timeRow.appendChild(t2);
+  sheet.appendChild(timeRow);
 
   // 繰り返し
   sheet.appendChild(lbl('繰り返し'));
@@ -858,6 +981,69 @@ function renderEventModal(wrap){
     colorRow.appendChild(btn);
   });
   sheet.appendChild(colorRow);
+
+  // 写真
+  sheet.appendChild(lbl('写真（最大10枚）'));
+  var photoArea=el('div',{style:'margin-bottom:8px;'});
+  // 既存写真サムネイル
+  if(formState.photos&&formState.photos.length>0){
+    var thumbGrid=el('div',{style:'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;'});
+    formState.photos.forEach(function(src,idx){
+      var wrap=el('div',{style:'position:relative;aspect-ratio:1;'});
+      var img=el('img',{src:src,style:'width:100%;height:100%;object-fit:cover;border-radius:6px;'});
+      var del=el('button',{style:'position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;padding:0;line-height:1;'});
+      del.textContent='×';
+      (function(i){
+        del.addEventListener('click',function(e){
+          e.stopPropagation();
+          formState.photos.splice(i,1);
+          formState.init=false;
+          render();
+        });
+      })(idx);
+      wrap.appendChild(img);
+      wrap.appendChild(del);
+      thumbGrid.appendChild(wrap);
+    });
+    photoArea.appendChild(thumbGrid);
+  }
+  // 追加ボタン
+  if(!formState.photos||formState.photos.length<10){
+    var addPhotoBtn=el('label',{style:'display:block;border:1.5px dashed #e8e8e4;border-radius:8px;padding:10px;text-align:center;cursor:pointer;color:#a8a8a4;font-size:12px;'});
+    addPhotoBtn.textContent='📷 タップして写真を追加';
+    var fileInp=el('input',{type:'file',accept:'image/*',multiple:'multiple'});
+    fileInp.style.display='none';
+    fileInp.addEventListener('change',function(){
+      var files=Array.from(this.files);
+      var remaining=10-(formState.photos||[]).length;
+      files.slice(0,remaining).forEach(function(file){
+        var reader=new FileReader();
+        reader.onload=function(e){
+          // 画像を圧縮
+          var img=new Image();
+          img.onload=function(){
+            var canvas=document.createElement('canvas');
+            var MAX=800;
+            var w=img.width, h=img.height;
+            if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}
+            else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
+            canvas.width=w; canvas.height=h;
+            canvas.getContext('2d').drawImage(img,0,0,w,h);
+            var compressed=canvas.toDataURL('image/jpeg',0.6);
+            if(!formState.photos)formState.photos=[];
+            formState.photos.push(compressed);
+            formState.init=false;
+            render();
+          };
+          img.src=e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    addPhotoBtn.appendChild(fileInp);
+    photoArea.appendChild(addPhotoBtn);
+  }
+  sheet.appendChild(photoArea);
 
   // ボタン
   var btnRow=el('div',{style:'display:grid;grid-template-columns:'+(isEdit?'1fr 1fr 1fr':'1fr 1fr')+';gap:8px;margin-top:6px;'});
@@ -890,21 +1076,27 @@ function renderEventModal(wrap){
       endDate:formState.end,
       date:formState.start,
       time:formState.time,
+      endTime:formState.endTime,
       memo:formState.memo,
       color:formState.color,
       recurrence:formState.recurrence,
       notifMins:formState.notifMins,
       calId:formState.calId,
-      photos:ev.photos||[],
+      photos:(isEdit ? (ev.photos||[]) : (formState.photos||[])),
     };
     if(isEdit){
       state.events=state.events.map(function(x){return x.id===ev.id?saved:x;});
+      state.modal=null;
     } else {
       state.events.push(saved);
-      if(formState.time){state.modal='reminder';state.reminderEv=saved;}
+      if(formState.time){
+        state.modal='reminder';
+        state.reminderEv=saved;
+      } else {
+        state.modal=null;
+      }
     }
     saveEvents(state.events);
-    if(!formState.time||isEdit){state.modal=null;}
     formState={};
     render();
   });
@@ -997,8 +1189,136 @@ function showToast(msg){
   setTimeout(function(){t.remove();},2200);
 }
 
+
+// ========== 写真拡大モーダル ==========
+function showPhotoViewer(photos, startIdx){
+  var idx=startIdx||0;
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,.92);z-index:500;display:flex;align-items:center;justify-content:center;';
+
+  var img=document.createElement('img');
+  img.style.cssText='max-width:95vw;max-height:85vh;object-fit:contain;border-radius:8px;';
+  img.src=photos[idx];
+
+  var counter=document.createElement('div');
+  counter.style.cssText='position:absolute;top:16px;right:16px;color:#fff;font-size:13px;background:rgba(0,0,0,.4);padding:4px 10px;border-radius:12px;';
+  counter.textContent=(idx+1)+'/'+photos.length;
+
+  var closeBtn=document.createElement('button');
+  closeBtn.style.cssText='position:absolute;top:16px;left:16px;background:rgba(0,0,0,.4);border:none;color:#fff;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;';
+  closeBtn.textContent='×';
+  closeBtn.addEventListener('click',function(){document.body.removeChild(overlay);});
+
+  function update(){
+    img.src=photos[idx];
+    counter.textContent=(idx+1)+'/'+photos.length;
+  }
+
+  if(photos.length>1){
+    var prevBtn=document.createElement('button');
+    prevBtn.style.cssText='position:absolute;left:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:none;color:#fff;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;';
+    prevBtn.textContent='‹';
+    prevBtn.addEventListener('click',function(){idx=(idx-1+photos.length)%photos.length;update();});
+
+    var nextBtn=document.createElement('button');
+    nextBtn.style.cssText='position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:none;color:#fff;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;';
+    nextBtn.textContent='›';
+    nextBtn.addEventListener('click',function(){idx=(idx+1)%photos.length;update();});
+
+    overlay.appendChild(prevBtn);
+    overlay.appendChild(nextBtn);
+  }
+
+  overlay.addEventListener('click',function(e){
+    if(e.target===overlay)document.body.removeChild(overlay);
+  });
+
+  overlay.appendChild(img);
+  overlay.appendChild(counter);
+  overlay.appendChild(closeBtn);
+  document.body.appendChild(overlay);
+}
+
+
+// ========== Google Calendar連携 ==========
+var GCAL_CLIENT_ID =  + CLIENT_ID + ;
+var GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+var gcalTokenClient = null;
+var gcalAccessToken = null;
+
+function initGoogleAuth(){
+  if(!window.google) return;
+  gcalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GCAL_CLIENT_ID,
+    scope: GCAL_SCOPES,
+    callback: function(resp){
+      if(resp.error) return;
+      gcalAccessToken = resp.access_token;
+      fetchGCalEvents();
+    }
+  });
+}
+
+function syncGoogleCalendar(){
+  if(!gcalTokenClient){ initGoogleAuth(); }
+  if(!gcalTokenClient){ alert('Google認証の初期化に失敗しました'); return; }
+  gcalAccessToken ? fetchGCalEvents() : gcalTokenClient.requestAccessToken();
+}
+
+function fetchGCalEvents(){
+  var now = new Date();
+  var timeMin = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString();
+  var timeMax = new Date(now.getFullYear(), now.getMonth()+3, 0).toISOString();
+  var url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
+    + '?timeMin='+encodeURIComponent(timeMin)
+    + '&timeMax='+encodeURIComponent(timeMax)
+    + '&singleEvents=true&orderBy=startTime&maxResults=100';
+
+  fetch(url, {headers:{Authorization:'Bearer '+gcalAccessToken}})
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.error){ gcalAccessToken=null; alert('エラー: '+data.error.message); return; }
+      var items = data.items||[];
+      // キャミーカレンダーのGCal予定を削除して再追加
+      state.events = state.events.filter(function(ev){ return ev.fromGCal!==true; });
+      items.forEach(function(item){
+        if(!item.start) return;
+        var startDate = (item.start.date || item.start.dateTime||'').slice(0,10);
+        var endDate = (item.end.date || item.end.dateTime||'').slice(0,10);
+        // 終日予定で終了日は1日前に調整
+        if(item.end.date){
+          var ed = new Date(endDate+'T12:00:00');
+          ed.setDate(ed.getDate()-1);
+          endDate = toDS(ed);
+        }
+        var startTime = '';
+        if(item.start.dateTime){
+          startTime = item.start.dateTime.slice(11,16);
+        }
+        state.events.push({
+          id: 'gcal_'+item.id,
+          title: item.summary||'(無題)',
+          startDate: startDate,
+          endDate: endDate,
+          date: startDate,
+          time: startTime,
+          memo: item.description||'',
+          color: '#e67e22',
+          calId: 'kyami',
+          fromGCal: true,
+          photos: [],
+        });
+      });
+      saveEvents(state.events);
+      showToast('Googleカレンダーを同期しました ('+items.length+'件)');
+      render();
+    })
+    .catch(function(e){ alert('同期失敗: '+e.message); });
+}
+
 // ========== 初期化 ==========
 render();
+setTimeout(initGoogleAuth, 1000);
 </script>
 </body>
 </html>
