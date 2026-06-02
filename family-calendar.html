@@ -219,6 +219,10 @@ function renderHeader(wrap){
     }});
     todayBtn.textContent='今日';
     right.appendChild(todayBtn);
+    var gcalBtn=el('button',{style:'background:#4285f4;border:none;border-radius:8px;padding:3px 6px;font-size:10px;color:#fff;font-weight:600;cursor:pointer;'});
+    gcalBtn.textContent='G同期';
+    gcalBtn.addEventListener('click',function(){ syncGoogleCalendar(); });
+    right.appendChild(gcalBtn);
   }
   h.appendChild(left);
   h.appendChild(right);
