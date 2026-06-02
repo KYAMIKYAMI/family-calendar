@@ -185,7 +185,7 @@ function txt(s){return document.createTextNode(s);}
 // ========== ヘッダー ==========
 function renderHeader(wrap){
   var h=el('div',{style:'background:#fff;border-bottom:1px solid #e8e8e4;padding:8px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;'});
-  var left=el('span',{style:'font-size:13px;font-weight:600;'},'📅 家族カレンダー');
+  var left=el('span',{style:'font-size:18px;font-weight:300;letter-spacing:1px;margin-right:8px;'},'Kalendar');
   var right=el('div',{style:'display:flex;gap:8px;align-items:center;'});
   if(state.viewMode==='daily'){
     var backBtn=el('button',{style:'background:#f2f2ef;border:none;border-radius:8px;padding:5px 10px;font-size:12px;color:#6b6b67;cursor:pointer;',onclick:function(){state.viewMode='calendar';render();}});
