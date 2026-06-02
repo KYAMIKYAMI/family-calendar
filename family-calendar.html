@@ -15,6 +15,14 @@ input,select,textarea,button{font-family:inherit;font-size:16px;}
 </head>
 <body>
 <div id="app"></div>
+<div id="err" style="display:none;padding:20px;color:red;font-size:12px;word-break:break-all;position:fixed;top:0;left:0;right:0;background:#fff;z-index:9999;"></div>
+<script>
+window.onerror=function(m,s,l,c,e){
+  var d=document.getElementById('err');
+  d.style.display='block';
+  d.innerText='ERROR: '+m+' (L'+l+') '+(e?e.stack:'');
+};
+</script>
 <script>
 // ========== データ ==========
 var SK = 'fc_ev1';
