@@ -445,23 +445,9 @@ function renderEventBars(wi){
     return at.localeCompare(bt);
   });
 
-  // 日ごとにイベントをグループ化して列分割表示
-  // 各日付ごとに何件あるか計算
-  var dayCount = {};
-  for(var d2=0;d2<7;d2++){
-    dayCount[d2] = 0;
-    dayEvs.forEach(function(ev){
-      var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
-      var aDate=parseDS(a), bDate=parseDS(b), wsDate=parseDS(ws);
-      var cs=Math.round((aDate-wsDate)/86400000);
-      var ce=Math.round((bDate-wsDate)/86400000);
-      cs=Math.max(0,Math.min(6,cs)); ce=Math.max(0,Math.min(6,ce));
-      if(cs<=d2&&d2<=ce) dayCount[d2]++;
-    });
-  }
-
-  // レーン割り当て（最大4本）
-  var lanes=[[],[],[],[]];
+  // レーン割り当て（最大2行、超えた分は+N表示）
+  var MAX_LANES = 4;
+  var lanes=[[],[],[],[],[],[]];
   dayEvs.forEach(function(ev){
     var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
     var aDate=parseDS(a), bDate=parseDS(b), wsDate=parseDS(ws);
@@ -471,22 +457,28 @@ function renderEventBars(wi){
     ce=Math.max(0,Math.min(6,ce));
     if(cs>ce)return;
     var lane=-1;
-    for(var l=0;l<4;l++){
+    for(var l=0;l<lanes.length;l++){
       var ok=true;
       for(var x=0;x<lanes[l].length;x++){
         if(cs<=lanes[l][x].ce&&ce>=lanes[l][x].cs){ok=false;break;}
       }
       if(ok){lane=l;break;}
     }
-    if(lane>=0){
-      lanes[lane].push({ev:ev,cs:cs,ce:ce});
-    }
+    if(lane>=0) lanes[lane].push({ev:ev,cs:cs,ce:ce});
   });
 
-  for(var l=0;l<Math.min(4,lanes.length);l++){
-    if(!lanes[l])continue;
+  // 各日のオーバーフロー数を計算
+  var overflow={};
+  for(var d3=0;d3<7;d3++) overflow[d3]=0;
+  for(var l2=MAX_LANES;l2<lanes.length;l2++){
+    lanes[l2].forEach(function(item){
+      for(var x=item.cs;x<=item.ce;x++) overflow[x]++;
+    });
+  }
+
+  for(var l=0;l<MAX_LANES;l++){
+    if(!lanes[l]||lanes[l].length===0)continue;
     var laneEl=el('div',{style:'display:grid;grid-template-columns:repeat(7,1fr);height:11px;margin-bottom:1px;'});
-    var used=new Set();
     lanes[l].forEach(function(item){
       var rL=item.cs===0&&parseDS(item.ev.startDate||item.ev.date)<parseDS(ws);
       var rR=item.ce===6&&parseDS(item.ev.endDate||item.ev.date||item.ev.startDate)>parseDS(we);
@@ -502,10 +494,33 @@ function renderEventBars(wi){
         state.dailyKey++;
         render();
       });
-      for(var x=item.cs;x<=item.ce;x++)used.add(x);
       laneEl.appendChild(bar);
     });
     area.appendChild(laneEl);
+  }
+
+  // +N オーバーフロー表示行
+  var hasOverflow=false;
+  for(var d4=0;d4<7;d4++) if(overflow[d4]>0) hasOverflow=true;
+  if(hasOverflow){
+    var overEl=el('div',{style:'display:grid;grid-template-columns:repeat(7,1fr);height:11px;margin-bottom:1px;'});
+    for(var d5=0;d5<7;d5++){
+      if(overflow[d5]>0){
+        var moreBtn=el('div',{style:'height:10px;line-height:10px;font-size:8px;color:#6b6b67;padding:0 2px;cursor:pointer;grid-column:'+(d5+1)+'/'+(d5+2)+';'});
+        moreBtn.textContent='+'+overflow[d5];
+        (function(ds){
+          moreBtn.addEventListener('click',function(e){
+            e.stopPropagation();
+            state.sel=parseDS(ds);
+            state.viewMode='daily';
+            state.dailyKey++;
+            render();
+          });
+        })(toDS(addDays(weekStart,d5)));
+        overEl.appendChild(moreBtn);
+      }
+    }
+    area.appendChild(overEl);
   }
   return area;
 }
