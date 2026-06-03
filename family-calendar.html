@@ -107,17 +107,18 @@ function saveEvents(evs){
     localStorage.setItem(SK, JSON.stringify(localEvs));
   }catch(e){}
 
-  // Firebase（共有分）保存
+  // Firebase（共有分）保存 - 写真URLはStorageにあるのでそのまま保存
   var sharedEvs = evs.filter(function(ev){ return SHARED_CAL_IDS.includes(ev.calId||'private'); });
   var fbData = {};
   sharedEvs.forEach(function(ev){
     var key = ev.id.replace(/[.#$\[\]]/g,'_');
-    // 写真はFirebaseに保存しない（容量節約）
-    var evNoPhoto = Object.assign({}, ev, {photos:[]});
-    fbData[key] = evNoPhoto;
+    // base64は除外してURLのみ保持
+    var cleanPhotos = (ev.photos||[]).filter(function(p){
+      return typeof p === 'string' && p.startsWith('https://');
+    });
+    fbData[key] = Object.assign({}, ev, {photos: cleanPhotos});
   });
 
-  // まず全共有イベントを削除してから再書き込み
   db.ref('events').set(fbData).catch(function(e){
     console.error('Firebase保存エラー:', e);
   });
@@ -1205,7 +1206,10 @@ function renderEventModal(wrap){
     // 写真をStorageにアップロード
     var photos = formState.photos || [];
     var pendingPhotos = photos.filter(function(p){ return typeof p === 'object' && p.pending; });
-    var existingUrls = photos.filter(function(p){ return typeof p === 'string'; });
+    // 既存のURLは文字列 or pending=falseのオブジェクト
+    var existingUrls = photos.filter(function(p){ return typeof p === 'string'; }).concat(
+      photos.filter(function(p){ return typeof p === 'object' && !p.pending; }).map(function(p){ return p.url; })
+    );
 
     if(pendingPhotos.length === 0){
       doSave(existingUrls);
