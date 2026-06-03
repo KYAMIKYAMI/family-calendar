@@ -445,22 +445,35 @@ function renderEventBars(wi){
     return at.localeCompare(bt);
   });
 
-  // レーン割り当て（最大3本）
+  // 日ごとにイベントをグループ化して列分割表示
+  // 各日付ごとに何件あるか計算
+  var dayCount = {};
+  for(var d2=0;d2<7;d2++){
+    dayCount[d2] = 0;
+    dayEvs.forEach(function(ev){
+      var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
+      var aDate=parseDS(a), bDate=parseDS(b), wsDate=parseDS(ws);
+      var cs=Math.round((aDate-wsDate)/86400000);
+      var ce=Math.round((bDate-wsDate)/86400000);
+      cs=Math.max(0,Math.min(6,cs)); ce=Math.max(0,Math.min(6,ce));
+      if(cs<=d2&&d2<=ce) dayCount[d2]++;
+    });
+  }
+
+  // レーン割り当て（最大4本）
   var lanes=[[],[],[],[]];
   dayEvs.forEach(function(ev){
     var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
-    // csとceを日数差で計算
     var aDate=parseDS(a), bDate=parseDS(b), wsDate=parseDS(ws);
     var cs=Math.round((aDate-wsDate)/86400000);
     var ce=Math.round((bDate-wsDate)/86400000);
     cs=Math.max(0,Math.min(6,cs));
     ce=Math.max(0,Math.min(6,ce));
-    if(cs>ce)return; // この週に表示範囲なし
+    if(cs>ce)return;
     var lane=-1;
     for(var l=0;l<4;l++){
       var ok=true;
       for(var x=0;x<lanes[l].length;x++){
-        // 重なりチェック
         if(cs<=lanes[l][x].ce&&ce>=lanes[l][x].cs){ok=false;break;}
       }
       if(ok){lane=l;break;}
@@ -1418,51 +1431,73 @@ function fetchGCalEvents(){
   var now = new Date();
   var timeMin = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString();
   var timeMax = new Date(now.getFullYear(), now.getMonth()+3, 0).toISOString();
-  var url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
-    + '?timeMin='+encodeURIComponent(timeMin)
-    + '&timeMax='+encodeURIComponent(timeMax)
-    + '&singleEvents=true&orderBy=startTime&maxResults=100';
 
-  fetch(url, {headers:{Authorization:'Bearer '+gcalAccessToken}})
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data.error){ gcalAccessToken=null; alert('エラー: '+data.error.message); return; }
-      var items = data.items||[];
-      // キャミーカレンダーのGCal予定を削除して再追加
-      state.events = state.events.filter(function(ev){ return ev.fromGCal!==true; });
-      items.forEach(function(item){
-        if(!item.start) return;
-        var startDate = (item.start.date || item.start.dateTime||'').slice(0,10);
-        var endDate = (item.end.date || item.end.dateTime||'').slice(0,10);
-        // 終日予定で終了日は1日前に調整
-        if(item.end.date){
-          var ed = new Date(endDate+'T12:00:00');
-          ed.setDate(ed.getDate()-1);
-          endDate = toDS(ed);
-        }
-        var startTime = '';
-        if(item.start.dateTime){
-          startTime = item.start.dateTime.slice(11,16);
-        }
-        state.events.push({
-          id: 'gcal_'+item.id,
-          title: item.summary||'(無題)',
-          startDate: startDate,
-          endDate: endDate,
-          date: startDate,
-          time: startTime,
-          memo: item.description||'',
-          color: '#e67e22',
-          calId: 'kyami',
-          fromGCal: true,
-          photos: [],
-        });
-      });
-      saveEvents(state.events);
-      showToast('Googleカレンダーを同期しました ('+items.length+'件)');
-      render();
-    })
-    .catch(function(e){ alert('同期失敗: '+e.message); });
+  fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+    headers:{Authorization:'Bearer '+gcalAccessToken}
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(listData){
+    if(listData.error){ gcalAccessToken=null; alert('エラー: '+listData.error.message); return; }
+    var calendars = listData.items||[];
+    var allItems = [];
+    var total = calendars.length;
+    var done = 0;
+    if(total === 0){ showToast('カレンダーが見つかりません'); return; }
+    calendars.forEach(function(cal){
+      var calColor = cal.backgroundColor || '#e67e22';
+      var url = 'https://www.googleapis.com/calendar/v3/calendars/'
+        + encodeURIComponent(cal.id) + '/events'
+        + '?timeMin='+encodeURIComponent(timeMin)
+        + '&timeMax='+encodeURIComponent(timeMax)
+        + '&singleEvents=true&orderBy=startTime&maxResults=200';
+      fetch(url, {headers:{Authorization:'Bearer '+gcalAccessToken}})
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          if(!data.error){
+            (data.items||[]).forEach(function(item){
+              item._calColor = calColor;
+              item._calName = cal.summary||'';
+              allItems.push(item);
+            });
+          }
+          done++;
+          if(done === total){
+            state.events = state.events.filter(function(ev){ return ev.fromGCal!==true; });
+            allItems.forEach(function(item){
+              if(!item.start) return;
+              var startDate = (item.start.date || item.start.dateTime||'').slice(0,10);
+              var endDate = (item.end.date || item.end.dateTime||'').slice(0,10);
+              if(item.end.date){
+                var ed = new Date(endDate+'T12:00:00');
+                ed.setDate(ed.getDate()-1);
+                endDate = toDS(ed);
+              }
+              var startTime = '';
+              if(item.start.dateTime){ startTime = item.start.dateTime.slice(11,16); }
+              state.events.push({
+                id: 'gcal_'+item.id,
+                title: item.summary||'(無題)',
+                startDate: startDate,
+                endDate: endDate,
+                date: startDate,
+                time: startTime,
+                memo: item.description||'',
+                color: item._calColor,
+                calId: 'kyami',
+                fromGCal: true,
+                gcalCalName: item._calName,
+                photos: [],
+              });
+            });
+            saveEvents(state.events);
+            showToast('Googleカレンダーを同期しました ('+allItems.length+'件)');
+            render();
+          }
+        })
+        .catch(function(){ done++; if(done===total){ render(); } });
+    });
+  })
+  .catch(function(e){ alert('同期失敗: '+e.message); });
 }
 
 
