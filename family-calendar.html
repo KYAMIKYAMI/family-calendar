@@ -327,6 +327,13 @@ function renderHeader(wrap){
     gcalBtn.textContent='G同期';
     gcalBtn.addEventListener('click',function(){ syncGoogleCalendar(); });
     right.appendChild(gcalBtn);
+    // ログアウトボタン（連携済みの時だけ表示）
+    if(localStorage.getItem(GCAL_TOKEN_SK)){
+      var gcalLogoutBtn=el('button',{style:'background:#eee;border:none;border-radius:8px;padding:3px 6px;font-size:10px;color:#666;font-weight:600;cursor:pointer;'});
+      gcalLogoutBtn.textContent='G解除';
+      gcalLogoutBtn.addEventListener('click',function(){ logoutGoogleCalendar(); });
+      right.appendChild(gcalLogoutBtn);
+    }
   }
   h.appendChild(leftWrap);
   h.appendChild(right);
@@ -1439,24 +1446,54 @@ var GCAL_CLIENT_ID = '1016400891063-lcsl64mna79hsc6eobmtnt45dkdrskop.apps.google
 var GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar';
 var gcalTokenClient = null;
 var gcalAccessToken = null;
+var gcalTokenExpiry = 0;
+var GCAL_TOKEN_SK = 'fc_gcal_authed';
 
 function initGoogleAuth(){
   if(!window.google) return;
   gcalTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GCAL_CLIENT_ID,
     scope: GCAL_SCOPES,
+    prompt: '',  // 初回以外は認証画面を出さない
     callback: function(resp){
       if(resp.error) return;
       gcalAccessToken = resp.access_token;
+      gcalTokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+      localStorage.setItem(GCAL_TOKEN_SK, '1');
       fetchGCalEvents();
     }
   });
+  // 以前にログイン済みなら自動でサイレント取得
+  if(localStorage.getItem(GCAL_TOKEN_SK)){
+    setTimeout(function(){
+      try{ gcalTokenClient.requestAccessToken({prompt:''}); }catch(e){}
+    }, 500);
+  }
 }
 
 function syncGoogleCalendar(){
   if(!gcalTokenClient){ initGoogleAuth(); }
   if(!gcalTokenClient){ alert('Google認証の初期化に失敗しました'); return; }
-  gcalAccessToken ? fetchGCalEvents() : gcalTokenClient.requestAccessToken();
+  // トークンが有効なら直接同期、期限切れなら再取得（サイレント）
+  if(gcalAccessToken && Date.now() < gcalTokenExpiry){
+    fetchGCalEvents();
+  } else {
+    gcalTokenClient.requestAccessToken({prompt:''});
+  }
+}
+
+function logoutGoogleCalendar(){
+  if(!confirm('Googleカレンダーとの連携を解除しますか？')) return;
+  gcalAccessToken = null;
+  gcalTokenExpiry = 0;
+  localStorage.removeItem(GCAL_TOKEN_SK);
+  gcalEventsCache = [];
+  state.events = state.events.filter(function(ev){ return !ev.fromGCal; });
+  if(window.google && google.accounts && google.accounts.oauth2){
+    google.accounts.oauth2.revoke(gcalAccessToken||'', function(){});
+  }
+  showToast('Googleカレンダーの連携を解除しました');
+  render();
 }
 
 function fetchGCalEvents(){
