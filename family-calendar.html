@@ -99,20 +99,23 @@ function loadLocalEvents(){
   try{return JSON.parse(localStorage.getItem(SK)||'[]');}catch(e){return [];}
 }
 
-// 保存：共有カレンダーはFirebase、キャミーはローカル
+// 保存：共有カレンダーはFirebase、キャミーはローカル（GCal同期予定は保存しない）
 function saveEvents(evs){
-  // ローカル（キャミー分）保存
-  var localEvs = evs.filter(function(ev){ return !SHARED_CAL_IDS.includes(ev.calId||'private'); });
+  // ローカル（キャミー分、ただしGCal同期予定は除外）
+  var localEvs = evs.filter(function(ev){
+    return !SHARED_CAL_IDS.includes(ev.calId||'private') && !ev.fromGCal;
+  });
   try{
     localStorage.setItem(SK, JSON.stringify(localEvs));
   }catch(e){}
 
-  // Firebase（共有分）保存 - 写真URLはStorageにあるのでそのまま保存
-  var sharedEvs = evs.filter(function(ev){ return SHARED_CAL_IDS.includes(ev.calId||'private'); });
+  // Firebase（共有分、GCal同期予定は除外）
+  var sharedEvs = evs.filter(function(ev){
+    return SHARED_CAL_IDS.includes(ev.calId||'private') && !ev.fromGCal;
+  });
   var fbData = {};
   sharedEvs.forEach(function(ev){
     var key = ev.id.replace(/[.#$\[\]]/g,'_');
-    // base64は除外してURLのみ保持
     var cleanPhotos = (ev.photos||[]).filter(function(p){
       return typeof p === 'string' && p.startsWith('https://');
     });
@@ -134,9 +137,10 @@ function startFirebaseSync(){
         if(ev && ev.id) fbEvs.push(ev);
       });
     }
-    // ローカルのキャミー予定と合成
+    // ローカルのキャミー予定と合成（GCal予定は上書きしない）
     var localEvs = loadLocalEvents();
-    state.events = fbEvs.concat(localEvs);
+    var gcalEvs = state.events ? state.events.filter(function(ev){ return ev.fromGCal===true; }) : [];
+    state.events = fbEvs.concat(localEvs).concat(gcalEvs);
     render();
   });
 }
