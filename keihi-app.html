@@ -97,9 +97,65 @@
 
   #view-form, #view-list { animation: slideUp 0.25s ease; }
   .hidden { display: none !important; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn 0.2s ease; }
+  .modal { background: #161620; border-radius: 24px 24px 0 0; border: 1px solid rgba(255,255,255,0.08); width: 100%; max-width: 500px; padding: 24px 20px 40px; animation: slideUp 0.25s ease; }
+  .modal-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 16px; font-weight: 700; color: #e8e8f0; margin-bottom: 20px; text-align: center; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-label { font-size: 10px; color: #3a3a5a; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: block; font-weight: 700; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-btn-save { flex: 2; padding: 14px; border-radius: 12px; border: none; background: rgba(255,255,255,0.95); color: #0a0a0f; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .modal-btn-delete { flex: 1; padding: 14px; border-radius: 12px; border: none; background: rgba(255,80,80,0.15); color: #ff6b6b; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 0 0 1px rgba(255,80,80,0.3); }
+  .modal-btn-cancel { flex: 1; padding: 14px; border-radius: 12px; border: none; background: rgba(255,255,255,0.05); color: #888; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .row { cursor: pointer; transition: background 0.15s; }
+  .row:active { background: rgba(255,255,255,0.04); }
 </style>
 </head>
 <body>
+
+<!-- 編集・削除モーダル -->
+<div id="edit-modal" class="modal-overlay hidden" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">記録を編集</div>
+    <div class="modal-field">
+      <label class="modal-label">取引日</label>
+      <input type="date" id="m-date" class="input" style="padding-right:40px">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">出金額</label>
+      <div class="input-row">
+        <input type="number" id="m-amount" class="input" style="text-align:right;flex:1;font-size:18px;font-weight:600">
+        <span class="yen">円</span>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">立替者</label>
+      <div class="payer-row">
+        <button class="payer-btn" id="m-pay-cammy" onclick="selectModalPayer('キャミー')">◉ キャミー</button>
+        <button class="payer-btn" id="m-pay-yui" onclick="selectModalPayer('唯')">◉ 唯</button>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">案件名</label>
+      <input type="text" id="m-anken" class="input" placeholder="案件名">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">取引内容</label>
+      <input type="text" id="m-torihiki" class="input" placeholder="例：株式会社トマト,生地">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">勘定科目</label>
+      <input type="text" id="m-kamoku" class="input">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="closeModalDirect()">キャンセル</button>
+      <button class="modal-btn-delete" onclick="deleteEntry()">削除</button>
+      <button class="modal-btn-save" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
 
 <div class="header">
   <div>
@@ -460,8 +516,10 @@ function renderList() {
         <div class="month-totals">${subTotals}<span class="month-total">¥${mTotal.toLocaleString()}</span></div>
       </div>
       <div class="month-card">
-        ${items.map((x,i) => `
-          <div class="row">
+        ${items.map((x) => {
+          const globalIdx = state.history.indexOf(x);
+          return `
+          <div class="row" onclick="openModal(${globalIdx})">
             <div>
               <div class="row-date">${x.取引日.slice(5)}</div>
               <span class="badge ${x.支払者 === "キャミー" ? "badge-blue" : "badge-red"}">${x.支払者}</span>
@@ -472,12 +530,70 @@ function renderList() {
               <div class="row-kamoku">${x.勘定科目}</div>
             </div>
             <div class="row-amount">¥${x.出金額}</div>
-          </div>
-        `).join("")}
+          </div>`;
+        }).join("")}
       </div>
     `;
     mg.appendChild(mDiv);
   });
+}
+
+let editingIndex = -1;
+let modalPayer = "";
+
+function openModal(idx) {
+  editingIndex = idx;
+  const x = state.history[idx];
+  document.getElementById("m-date").value = x.取引日.replace(/\//g, "-");
+  document.getElementById("m-amount").value = x._amount;
+  document.getElementById("m-anken").value = x.案件名 || "";
+  document.getElementById("m-torihiki").value = x.取引内容 || "";
+  document.getElementById("m-kamoku").value = x.勘定科目 || "";
+  selectModalPayer(x.支払者);
+  document.getElementById("edit-modal").classList.remove("hidden");
+}
+
+function selectModalPayer(p) {
+  modalPayer = p;
+  document.getElementById("m-pay-cammy").className = "payer-btn" + (p === "キャミー" ? " active-blue" : "");
+  document.getElementById("m-pay-yui").className = "payer-btn" + (p === "唯" ? " active-red" : "");
+}
+
+function closeModal(e) {
+  if (e.target.id === "edit-modal") closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById("edit-modal").classList.add("hidden");
+  editingIndex = -1;
+}
+
+function saveEdit() {
+  if (editingIndex < 0) return;
+  const newAmount = Number(document.getElementById("m-amount").value);
+  state.history[editingIndex] = {
+    ...state.history[editingIndex],
+    取引日: document.getElementById("m-date").value.replace(/-/g, "/"),
+    出金額: newAmount.toLocaleString(),
+    _amount: newAmount,
+    支払者: modalPayer,
+    案件名: document.getElementById("m-anken").value,
+    取引内容: document.getElementById("m-torihiki").value,
+    勘定科目: document.getElementById("m-kamoku").value,
+  };
+  saveState(state.history);
+  closeModalDirect();
+  renderList();
+  switchView("list");
+}
+
+function deleteEntry() {
+  if (editingIndex < 0) return;
+  if (!confirm("この記録を削除しますか？")) return;
+  state.history.splice(editingIndex, 1);
+  saveState(state.history);
+  closeModalDirect();
+  renderList();
+  switchView("list");
 }
 
 initChips();
