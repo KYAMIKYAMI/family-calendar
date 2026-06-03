@@ -96,7 +96,15 @@ function parseDS(s){return new Date(s+'T12:00:00');}
 
 // ローカルイベント読み込み（キャミーのみ）
 function loadLocalEvents(){
-  try{return JSON.parse(localStorage.getItem(SK)||'[]');}catch(e){return [];}
+  try{
+    var evs = JSON.parse(localStorage.getItem(SK)||'[]');
+    // 古いバージョンで保存されたGCal予定を除去
+    var cleaned = evs.filter(function(ev){ return !ev.fromGCal; });
+    if(cleaned.length !== evs.length){
+      localStorage.setItem(SK, JSON.stringify(cleaned));
+    }
+    return cleaned;
+  }catch(e){return [];}
 }
 
 // 保存：共有カレンダーはFirebase、キャミーはローカル（GCal同期予定は保存しない）
