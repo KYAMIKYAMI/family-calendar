@@ -1528,7 +1528,21 @@ function fetchGCalEvents(){
                 photos: [],
               });
             });
-            // state.eventsのGCal以外を保持しつつキャッシュを合成
+            // ローカルストレージからGCal予定を完全削除
+            try{
+              var local = JSON.parse(localStorage.getItem(SK)||'[]');
+              localStorage.setItem(SK, JSON.stringify(local.filter(function(ev){ return !ev.fromGCal; })));
+            }catch(e){}
+            // FirebaseからもGCal予定を削除
+            db.ref('events').once('value').then(function(snap){
+              var fbData = snap.val()||{};
+              Object.keys(fbData).forEach(function(key){
+                if(fbData[key] && fbData[key].fromGCal){
+                  db.ref('events/'+key).remove();
+                }
+              });
+            });
+            // state.eventsのGCal以外を保持しつつ最新キャッシュを合成
             state.events = state.events.filter(function(ev){ return !ev.fromGCal; }).concat(gcalEventsCache);
             saveEvents(state.events);
             showToast('Googleカレンダーを同期しました ('+allItems.length+'件)');
