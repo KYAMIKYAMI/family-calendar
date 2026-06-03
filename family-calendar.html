@@ -446,7 +446,7 @@ function renderEventBars(wi){
   });
 
   // レーン割り当て（最大2行、超えた分は+N表示）
-  var MAX_LANES = 4;
+  var MAX_LANES = 3;
   var lanes=[[],[],[],[],[],[]];
   dayEvs.forEach(function(ev){
     var a=ev.startDate||ev.date, b=ev.endDate||ev.date||a;
@@ -466,6 +466,11 @@ function renderEventBars(wi){
     }
     if(lane>=0) lanes[lane].push({ev:ev,cs:cs,ce:ce});
   });
+
+  // レーンを詰める（空レーンをスキップして上に詰める）
+  var compacted = lanes.filter(function(lane){ return lane.length > 0; });
+  while(compacted.length < lanes.length) compacted.push([]);
+  lanes = compacted;
 
   // 各日のオーバーフロー数を計算
   var overflow={};
