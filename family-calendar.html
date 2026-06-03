@@ -1439,6 +1439,13 @@ function fetchGCalEvents(){
   .then(function(listData){
     if(listData.error){ gcalAccessToken=null; alert('エラー: '+listData.error.message); return; }
     var calendars = listData.items||[];
+    // calendarListに含まれないカレンダーを手動追加
+    var extraIds = ['b8kl0hvhbpav9a60nfnsorkv6g@group.calendar.google.com'];
+    extraIds.forEach(function(id){
+      if(!calendars.find(function(c){ return c.id===id; })){
+        calendars.push({id: id, summary: 'notion', backgroundColor: '#4285f4'});
+      }
+    });
     var allItems = [];
     var total = calendars.length;
     var done = 0;
