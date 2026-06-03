@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>明細_現金</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(160deg, #0a0a0f 0%, #0d0d14 100%);
+    font-family: -apple-system, 'Hiragino Sans', sans-serif;
+    color: #e8e8f0;
+    padding-bottom: 100px;
+  }
+  @keyframes slideUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes checkPop { 0%{transform:scale(0.7);opacity:0} 60%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.25); cursor:pointer; }
+  input::placeholder { color: #333; }
+  button:active { transform: scale(0.97); }
+  ::-webkit-scrollbar { width: 0; }
+
+  .wrap { max-width: 500px; margin: 0 auto; padding: 0 20px; }
+  .header { max-width: 500px; margin: 0 auto; padding: 16px 24px 0; display: flex; justify-content: space-between; align-items: flex-end; animation: fadeIn 0.4s ease; }
+  .header-label { font-size: 11px; color: #3a3a5a; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px; font-weight: 600; }
+  .header-title { font-size: 28px; color: #e8e8f0; font-weight: 700; letter-spacing: -1px; }
+  .header-total-label { font-size: 10px; color: #3a3a5a; margin-bottom: 3px; letter-spacing: 1px; text-align: right; }
+  .header-total-val { font-size: 22px; color: #e8e8f0; font-weight: 300; letter-spacing: -0.5px; }
+
+  .seg { background: rgba(255,255,255,0.04); border-radius: 14px; padding: 4px; display: flex; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.06); margin-top: 20px; }
+  .seg-btn { flex: 1; padding: 10px 0; border-radius: 10px; border: none; background: transparent; color: #44445a; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .seg-btn.active { background: rgba(255,255,255,0.1); color: #e8e8f0; box-shadow: 0 1px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08); }
+
+  .toast { background: rgba(40,200,80,0.12); border: 1px solid rgba(40,200,80,0.25); border-radius: 14px; padding: 14px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 12; animation: slideUp 0.3s ease; }
+  .toast-icon { width: 24px; height: 24px; border-radius: 50%; background: rgba(40,200,80,0.2); display: flex; align-items: center; justify-content: center; animation: checkPop 0.4s ease; color: #28c840; font-size: 13px; }
+  .toast-text { color: #28c840; font-size: 14px; font-weight: 500; }
+
+  .card { background: rgba(255,255,255,0.035); border-radius: 18px; border: 1px solid rgba(255,255,255,0.07); overflow: hidden; margin-bottom: 16px; }
+  .field { padding: 16px 20px; }
+  .field-label { display: block; font-size: 10px; color: #3a3a5a; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; font-weight: 700; }
+  .field-label span { color: #2a2a3a; font-size: 10px; font-weight: 400; }
+  .divider { height: 1px; background: rgba(255,255,255,0.04); margin: 0 20px; }
+
+  .input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 11px 14px; color: #c8c8e0; font-size: 15px; outline: none; transition: border-color 0.2s; font-family: inherit; }
+  .input-row { display: flex; align-items: center; gap: 10px; }
+  .input-row .input { text-align: right; flex: 1; font-size: 18px; font-weight: 600; color: #e8e8f0; }
+  .yen { color: #44445a; font-size: 15px; font-weight: 500; }
+
+  .payer-row { display: flex; gap: 10px; }
+  .payer-btn { flex: 1; padding: 13px 0; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.04); color: #44445a; box-shadow: 0 0 0 1px rgba(255,255,255,0.06); transition: all 0.2s; font-family: inherit; }
+  .payer-btn.active-blue { background: rgba(74,158,255,0.13); color: #4a9eff; box-shadow: 0 0 0 1px rgba(74,158,255,0.35), inset 0 1px 0 rgba(74,158,255,0.13); }
+  .payer-btn.active-red { background: rgba(255,107,107,0.13); color: #ff6b6b; box-shadow: 0 0 0 1px rgba(255,107,107,0.35), inset 0 1px 0 rgba(255,107,107,0.13); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 8px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.15s; border: none; background: rgba(255,255,255,0.04); color: #44445a; box-shadow: 0 0 0 1px rgba(255,255,255,0.06); font-family: inherit; }
+  .chip.active { background: rgba(255,255,255,0.12); color: #e8e8f0; box-shadow: 0 0 0 1px rgba(255,255,255,0.25), inset 0 1px 0 rgba(255,255,255,0.1); }
+
+  .preview-box { padding: 12px 20px; background: rgba(0,0,0,0.2); }
+  .preview-label { font-size: 10px; color: #2a2a4a; margin-bottom: 4px; letter-spacing: 2px; text-transform: uppercase; }
+  .preview-val { color: #4a4a6a; font-size: 12px; font-family: monospace; }
+
+  .submit-btn { width: 100%; padding: 17px; border-radius: 16px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px; font-family: inherit; }
+  .submit-btn.ready { background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(220,220,240,0.95) 100%); color: #0a0a0f; box-shadow: 0 4px 20px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.9); }
+  .submit-btn.disabled { background: rgba(255,255,255,0.04); color: #2a2a3a; cursor: not-allowed; box-shadow: 0 0 0 1px rgba(255,255,255,0.05); }
+
+  .summary { background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 18px 20px; margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; }
+  .summary-col { text-align: center; }
+  .summary-sep { background: rgba(255,255,255,0.06); }
+  .summary-label { font-size: 10px; margin-bottom: 6px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .summary-val { font-size: 17px; font-weight: 700; }
+
+  .filter-row { display: flex; gap: 6px; margin-bottom: 20px; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 4px; border: 1px solid rgba(255,255,255,0.05); }
+  .filter-btn { flex: 1; padding: 8px 0; border-radius: 8px; border: none; background: transparent; color: #3a3a5a; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+  .filter-btn.active { background: rgba(255,255,255,0.1); color: #e8e8f0; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+  .month-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 2px; }
+  .month-title { font-size: 12px; color: #5a5a7a; font-weight: 700; letter-spacing: 1px; }
+  .month-totals { display: flex; gap: 10px; align-items: center; }
+  .month-total { font-size: 13px; color: #8a8aaa; font-weight: 700; }
+
+  .month-card { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; overflow: hidden; margin-bottom: 8px; }
+  .row { display: grid; grid-template-columns: 72px 1fr auto; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: center; gap: 8px; }
+  .row:last-child { border-bottom: none; }
+  .row-date { font-size: 12px; color: #5a5a7a; margin-bottom: 5px; }
+  .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: 0.5px; }
+  .badge-blue { background: rgba(74,158,255,0.15); color: #4a9eff; }
+  .badge-red { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+  .row-content { min-width: 0; }
+  .row-name { font-size: 13px; color: #c8c8e0; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-anken { font-size: 11px; color: #3a3a5a; }
+  .row-kamoku { font-size: 10px; color: #2a2a4a; margin-top: 2px; }
+  .row-amount { font-size: 14px; color: #e8e8f0; font-weight: 700; text-align: right; white-space: nowrap; }
+
+  .empty { text-align: center; color: #2a2a3a; padding: 80px 0; font-size: 14px; }
+  .empty-icon { font-size: 32px; margin-bottom: 16px; opacity: 0.3; }
+
+  #view-form, #view-list { animation: slideUp 0.25s ease; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-label">経費記録</div>
+    <div class="header-title">明細_現金</div>
+  </div>
+  <div id="header-total" class="hidden">
+    <div class="header-total-label">TOTAL</div>
+    <div class="header-total-val">¥<span id="header-total-val">0</span></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="seg">
+    <button class="seg-btn active" id="tab-form" onclick="switchView('form')">＋ 入力</button>
+    <button class="seg-btn" id="tab-list" onclick="switchView('list')">一覧</button>
+  </div>
+
+  <div id="toast" class="toast hidden">
+    <div class="toast-icon">✓</div>
+    <span class="toast-text">記録しました・スプレッドシートに送信中…</span>
+  </div>
+
+  <!-- FORM VIEW -->
+  <div id="view-form">
+    <div class="card">
+      <!-- 取引日 -->
+      <div class="field">
+        <label class="field-label">取引日</label>
+        <input type="date" id="f-date" class="input" style="padding-right:40px">
+      </div>
+      <div class="divider"></div>
+
+      <!-- 出金額 -->
+      <div class="field">
+        <label class="field-label">出金額</label>
+        <div class="input-row">
+          <input type="number" id="f-amount" class="input" placeholder="0">
+          <span class="yen">円</span>
+        </div>
+      </div>
+      <div class="divider"></div>
+
+      <!-- 立替者 -->
+      <div class="field">
+        <label class="field-label">立替者</label>
+        <div class="payer-row">
+          <button class="payer-btn" id="pay-cammy" onclick="selectPayer('キャミー')">◉ キャミー</button>
+          <button class="payer-btn" id="pay-yui" onclick="selectPayer('唯')">◉ 唯</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+
+      <!-- 勘定科目 -->
+      <div class="field">
+        <label class="field-label">勘定科目</label>
+        <div class="chips" id="chips-kamoku"></div>
+      </div>
+      <div class="divider"></div>
+
+      <!-- 案件名 -->
+      <div class="field">
+        <label class="field-label">案件名 <span>任意</span></label>
+        <div class="chips" id="chips-anken" style="margin-bottom:0"></div>
+        <input type="text" id="f-anken" class="input" placeholder="新しい案件名を入力" style="margin-top:10px">
+      </div>
+      <div class="divider"></div>
+
+      <!-- 取引先 -->
+      <div class="field">
+        <label class="field-label">取引先</label>
+        <div class="chips" id="chips-company"></div>
+        <input type="text" id="f-custom-company" class="input hidden" placeholder="会社名を入力" style="margin-top:10px">
+      </div>
+      <div class="divider"></div>
+
+      <!-- 内容 -->
+      <div class="field">
+        <label class="field-label">内容</label>
+        <div class="chips" id="chips-category"></div>
+      </div>
+
+      <!-- Preview -->
+      <div id="preview-box" class="preview-box hidden">
+        <div class="preview-label">Preview</div>
+        <div class="preview-val" id="preview-val"></div>
+      </div>
+    </div>
+
+    <button class="submit-btn disabled" id="submit-btn" onclick="handleSubmit()">必須項目を入力してください</button>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div id="view-list" class="hidden">
+    <div id="list-empty" class="empty">
+      <div class="empty-icon">📋</div>
+      まだ記録がありません
+    </div>
+    <div id="list-content" class="hidden">
+      <div class="summary">
+        <div class="summary-col">
+          <div class="summary-label" style="color:#3a3a5a">合計</div>
+          <div class="summary-val" id="sum-total" style="color:#e8e8f0">¥0</div>
+        </div>
+        <div class="summary-sep"></div>
+        <div class="summary-col">
+          <div class="summary-label" style="color:#4a9eff">キャミー</div>
+          <div class="summary-val" id="sum-cammy" style="color:#4a9eff">¥0</div>
+        </div>
+        <div class="summary-sep"></div>
+        <div class="summary-col">
+          <div class="summary-label" style="color:#ff6b6b">唯</div>
+          <div class="summary-val" id="sum-yui" style="color:#ff6b6b">¥0</div>
+        </div>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="setFilter('全員')">全員</button>
+        <button class="filter-btn" onclick="setFilter('キャミー')">キャミー</button>
+        <button class="filter-btn" onclick="setFilter('唯')">唯</button>
+      </div>
+      <div id="month-groups"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxj9bpWHidR1kwv5-z6xHNpdqbkz4ZyGEwzWcJa8zGeu9xf3WbFG-MuJm6susgt6H9_/exec";
+const COMPANIES = ["A-TXTILE","株式会社トマト","藤掛株式会社","やまよ","オカダヤ新宿店","ロイヤルホームセンター南千住","ミシンショップタケダ日暮里本店","And Leather","郵便局","ヤマト運輸","その他（手入力）"];
+const CATEGORIES = ["生地","資材","発送運賃"];
+const KAMOKU_LIST = ["[製]材料仕入高","[製]旅費交通費"];
+
+let state = {
+  date: new Date().toISOString().slice(0,10),
+  amount: "",
+  kamoku: "[製]材料仕入高",
+  ankenName: "",
+  company: "",
+  category: "",
+  payer: "",
+  history: [],
+  filter: "全員",
+  currentView: "form",
+};
+
+// Init
+document.getElementById("f-date").value = state.date;
+document.getElementById("f-date").addEventListener("change", e => { state.date = e.target.value; checkReady(); });
+document.getElementById("f-amount").addEventListener("input", e => { state.amount = e.target.value; checkReady(); });
+document.getElementById("f-anken").addEventListener("input", e => { state.ankenName = e.target.value; });
+document.getElementById("f-custom-company").addEventListener("input", e => { checkReady(); updatePreview(); });
+
+function renderChips(containerId, items, stateKey, onSelect) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  items.forEach(item => {
+    const btn = document.createElement("button");
+    btn.className = "chip" + (state[stateKey] === item ? " active" : "");
+    btn.textContent = item;
+    btn.onclick = () => onSelect(item);
+    el.appendChild(btn);
+  });
+}
+
+function initChips() {
+  renderChips("chips-kamoku", KAMOKU_LIST, "kamoku", val => {
+    state.kamoku = val;
+    renderChips("chips-kamoku", KAMOKU_LIST, "kamoku", arguments.callee);
+  });
+  renderChips("chips-company", COMPANIES, "company", val => {
+    state.company = val;
+    const custom = document.getElementById("f-custom-company");
+    if (val === "その他（手入力）") { custom.classList.remove("hidden"); custom.focus(); }
+    else { custom.classList.add("hidden"); }
+    renderChips("chips-company", COMPANIES, "company", arguments.callee);
+    checkReady(); updatePreview();
+  });
+  renderChips("chips-category", CATEGORIES, "category", val => {
+    state.category = val;
+    renderChips("chips-category", CATEGORIES, "category", arguments.callee);
+    checkReady(); updatePreview();
+  });
+}
+
+function renderAnkenChips() {
+  const existing = [...new Set(state.history.map(h => h.案件名).filter(Boolean))];
+  const el = document.getElementById("chips-anken");
+  el.innerHTML = "";
+  if (existing.length === 0) { el.style.marginBottom = "0"; return; }
+  el.style.marginBottom = "10px";
+  existing.forEach(a => {
+    const btn = document.createElement("button");
+    btn.className = "chip" + (state.ankenName === a ? " active" : "");
+    btn.textContent = a;
+    btn.onclick = () => {
+      state.ankenName = state.ankenName === a ? "" : a;
+      document.getElementById("f-anken").value = state.ankenName;
+      renderAnkenChips();
+    };
+    el.appendChild(btn);
+  });
+}
+
+function selectPayer(p) {
+  state.payer = p;
+  const cb = document.getElementById("pay-cammy");
+  const yb = document.getElementById("pay-yui");
+  cb.className = "payer-btn" + (p === "キャミー" ? " active-blue" : "");
+  yb.className = "payer-btn" + (p === "唯" ? " active-red" : "");
+  checkReady();
+}
+
+function updatePreview() {
+  const company = state.company === "その他（手入力）"
+    ? document.getElementById("f-custom-company").value
+    : state.company;
+  const val = company && state.category ? `${company},${state.category}` : "";
+  const box = document.getElementById("preview-box");
+  if (val) { box.classList.remove("hidden"); document.getElementById("preview-val").textContent = val; }
+  else { box.classList.add("hidden"); }
+}
+
+function checkReady() {
+  const company = state.company === "その他（手入力）"
+    ? document.getElementById("f-custom-company").value
+    : state.company;
+  const ready = state.date && state.amount && company && state.category && state.payer;
+  const btn = document.getElementById("submit-btn");
+  btn.className = "submit-btn " + (ready ? "ready" : "disabled");
+  btn.textContent = ready ? "記録する" : "必須項目を入力してください";
+}
+
+async function handleSubmit() {
+  const company = state.company === "その他（手入力）"
+    ? document.getElementById("f-custom-company").value
+    : state.company;
+  if (!state.date || !state.amount || !company || !state.category || !state.payer) return;
+  state.ankenName = document.getElementById("f-anken").value;
+  const entry = {
+    取引日: state.date.replace(/-/g, "/"),
+    出金額: Number(state.amount).toLocaleString(),
+    _amount: Number(state.amount),
+    勘定科目: state.kamoku,
+    案件名: state.ankenName,
+    取引内容: `${company},${state.category}`,
+    支払者: state.payer,
+  };
+  state.history.unshift(entry);
+
+  const toast = document.getElementById("toast");
+  toast.classList.remove("hidden");
+
+  try {
+    await fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+    });
+    document.querySelector(".toast-text").textContent = "記録しました ✓";
+  } catch(e) {
+    document.querySelector(".toast-text").textContent = "アプリに記録しました（送信エラー）";
+  }
+
+  // Reset
+  state.amount = ""; state.company = ""; state.category = ""; state.payer = ""; state.ankenName = "";
+  document.getElementById("f-amount").value = "";
+  document.getElementById("f-anken").value = "";
+  document.getElementById("f-custom-company").value = "";
+  document.getElementById("f-custom-company").classList.add("hidden");
+  document.getElementById("pay-cammy").className = "payer-btn";
+  document.getElementById("pay-yui").className = "payer-btn";
+  initChips(); renderAnkenChips(); updatePreview(); checkReady();
+
+  setTimeout(() => { toast.classList.add("hidden"); switchView("list"); }, 1500);
+}
+
+function switchView(v) {
+  state.currentView = v;
+  document.getElementById("view-form").classList.toggle("hidden", v !== "form");
+  document.getElementById("view-list").classList.toggle("hidden", v !== "list");
+  document.getElementById("tab-form").className = "seg-btn" + (v === "form" ? " active" : "");
+  document.getElementById("tab-list").className = "seg-btn" + (v === "list" ? " active" : "");
+  const cnt = state.history.length;
+  document.getElementById("tab-list").textContent = `一覧${cnt > 0 ? ` (${cnt})` : ""}`;
+  if (v === "list") renderList();
+  const ht = document.getElementById("header-total");
+  if (v === "list" && cnt > 0) { ht.classList.remove("hidden"); updateHeaderTotal(); }
+  else ht.classList.add("hidden");
+}
+
+function setFilter(f) {
+  state.filter = f;
+  document.querySelectorAll(".filter-btn").forEach((b,i) => {
+    b.className = "filter-btn" + (["全員","キャミー","唯"][i] === f ? " active" : "");
+  });
+  renderList();
+}
+
+function updateHeaderTotal() {
+  const filtered = state.filter === "全員" ? state.history : state.history.filter(h => h.支払者 === state.filter);
+  const total = filtered.reduce((s,h) => s + h._amount, 0);
+  document.getElementById("header-total-val").textContent = total.toLocaleString();
+}
+
+function renderList() {
+  const h = state.history;
+  const empty = document.getElementById("list-empty");
+  const content = document.getElementById("list-content");
+  if (h.length === 0) { empty.classList.remove("hidden"); content.classList.add("hidden"); return; }
+  empty.classList.add("hidden"); content.classList.remove("hidden");
+
+  const totalAll = h.reduce((s,x) => s + x._amount, 0);
+  const totalC = h.filter(x => x.支払者 === "キャミー").reduce((s,x) => s + x._amount, 0);
+  const totalY = h.filter(x => x.支払者 === "唯").reduce((s,x) => s + x._amount, 0);
+  document.getElementById("sum-total").textContent = "¥" + totalAll.toLocaleString();
+  document.getElementById("sum-cammy").textContent = "¥" + totalC.toLocaleString();
+  document.getElementById("sum-yui").textContent = "¥" + totalY.toLocaleString();
+  updateHeaderTotal();
+
+  const filtered = state.filter === "全員" ? h : h.filter(x => x.支払者 === state.filter);
+  const grouped = {};
+  filtered.forEach(x => {
+    const m = x.取引日.slice(0,7);
+    if (!grouped[m]) grouped[m] = [];
+    grouped[m].push(x);
+  });
+
+  const mg = document.getElementById("month-groups");
+  mg.innerHTML = "";
+  Object.keys(grouped).sort((a,b) => b.localeCompare(a)).forEach(month => {
+    const items = grouped[month];
+    const mTotal = items.reduce((s,x) => s + x._amount, 0);
+    const mC = items.filter(x => x.支払者 === "キャミー").reduce((s,x) => s + x._amount, 0);
+    const mY = items.filter(x => x.支払者 === "唯").reduce((s,x) => s + x._amount, 0);
+
+    const mDiv = document.createElement("div");
+    mDiv.style.marginBottom = "8px";
+
+    let subTotals = "";
+    if (mC > 0) subTotals += `<span style="font-size:11px;color:#4a9eff88">キャ ¥${mC.toLocaleString()}</span>`;
+    if (mY > 0) subTotals += `<span style="font-size:11px;color:#ff6b6b88;margin-left:8px">唯 ¥${mY.toLocaleString()}</span>`;
+
+    mDiv.innerHTML = `
+      <div class="month-header">
+        <div class="month-title">${month.replace("/","年")}月</div>
+        <div class="month-totals">${subTotals}<span class="month-total">¥${mTotal.toLocaleString()}</span></div>
+      </div>
+      <div class="month-card">
+        ${items.map((x,i) => `
+          <div class="row">
+            <div>
+              <div class="row-date">${x.取引日.slice(5)}</div>
+              <span class="badge ${x.支払者 === "キャミー" ? "badge-blue" : "badge-red"}">${x.支払者}</span>
+            </div>
+            <div class="row-content">
+              <div class="row-name">${x.取引内容}</div>
+              ${x.案件名 ? `<div class="row-anken">${x.案件名}</div>` : ""}
+              <div class="row-kamoku">${x.勘定科目}</div>
+            </div>
+            <div class="row-amount">¥${x.出金額}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+    mg.appendChild(mDiv);
+  });
+}
+
+initChips();
+</script>
+</body>
+</html>
