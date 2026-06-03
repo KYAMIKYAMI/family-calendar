@@ -128,6 +128,8 @@ function saveEvents(evs){
 }
 
 // Firebase変更をリッスン
+var gcalEventsCache = []; // GCal予定はメモリのみで管理
+
 function startFirebaseSync(){
   db.ref('events').on('value', function(snapshot){
     var fbEvs = [];
@@ -137,10 +139,8 @@ function startFirebaseSync(){
         if(ev && ev.id) fbEvs.push(ev);
       });
     }
-    // ローカルのキャミー予定と合成（GCal予定は上書きしない）
     var localEvs = loadLocalEvents();
-    var gcalEvs = state.events ? state.events.filter(function(ev){ return ev.fromGCal===true; }) : [];
-    state.events = fbEvs.concat(localEvs).concat(gcalEvs);
+    state.events = fbEvs.concat(localEvs).concat(gcalEventsCache);
     render();
   });
 }
@@ -1493,10 +1493,7 @@ function fetchGCalEvents(){
           }
           done++;
           if(done === total){
-            console.log('GCal取得完了:', allItems.length, '件');
-            console.log('取得したID一覧:', allItems.map(function(i){ return 'gcal_'+i.id; }));
-            console.log('削除前のGCal予定:', state.events.filter(function(ev){ return ev.fromGCal; }).map(function(ev){ return ev.id+' '+ev.title; }));
-            state.events = state.events.filter(function(ev){ return ev.fromGCal!==true; });
+            gcalEventsCache = [];
             allItems.forEach(function(item){
               if(!item.start) return;
               var startDate = (item.start.date || item.start.dateTime||'').slice(0,10);
@@ -1508,7 +1505,7 @@ function fetchGCalEvents(){
               }
               var startTime = '';
               if(item.start.dateTime){ startTime = item.start.dateTime.slice(11,16); }
-              state.events.push({
+              gcalEventsCache.push({
                 id: 'gcal_'+item.id,
                 title: item.summary||'(無題)',
                 startDate: startDate,
@@ -1523,8 +1520,9 @@ function fetchGCalEvents(){
                 photos: [],
               });
             });
+            // state.eventsのGCal以外を保持しつつキャッシュを合成
+            state.events = state.events.filter(function(ev){ return !ev.fromGCal; }).concat(gcalEventsCache);
             saveEvents(state.events);
-            console.log('保存後のGCal予定:', state.events.filter(function(ev){ return ev.fromGCal; }).map(function(ev){ return ev.id+' '+ev.title; }));
             showToast('Googleカレンダーを同期しました ('+allItems.length+'件)');
             render();
           }
