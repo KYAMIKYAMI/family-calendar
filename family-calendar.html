@@ -1615,6 +1615,16 @@ function evToGCalBody(ev){
 }
 
 // ========== 初期化 ==========
+// 起動時にローカルストレージのGCal予定を必ず削除
+(function(){
+  try{
+    var evs = JSON.parse(localStorage.getItem(SK)||'[]');
+    var cleaned = evs.filter(function(ev){ return !ev.fromGCal && !(ev.id&&ev.id.indexOf('gcal_')===0); });
+    if(cleaned.length !== evs.length){
+      localStorage.setItem(SK, JSON.stringify(cleaned));
+    }
+  }catch(e){}
+})();
 render();
 setTimeout(initGoogleAuth, 1000);
 // Firebase同期開始
