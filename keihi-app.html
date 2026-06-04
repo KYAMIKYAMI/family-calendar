@@ -151,8 +151,11 @@
     </div>
     <div class="modal-actions">
       <button class="modal-btn-cancel" onclick="closeModalDirect()">キャンセル</button>
-      <button class="modal-btn-delete" onclick="deleteEntry()">削除</button>
+      <button class="modal-btn-delete" id="modal-delete-btn" onclick="deleteEntry()">削除</button>
       <button class="modal-btn-save" onclick="saveEdit()">保存</button>
+    </div>
+    <div id="modal-delete-confirm" class="hidden" style="margin-top:12px;text-align:center;padding:12px;background:rgba(255,80,80,0.1);border-radius:10px;border:1px solid rgba(255,80,80,0.3);">
+      <div style="color:#ff6b6b;font-size:13px;font-weight:600;">もう一度「削除」を押すと削除されます</div>
     </div>
   </div>
 </div>
@@ -291,11 +294,35 @@ const KAMOKU_LIST = ["[製]材料仕入高","[製]旅費交通費"];
 function loadState() {
   try {
     const saved = localStorage.getItem("keihi-history");
-    return saved ? JSON.parse(saved) : [];
+    if (saved) return JSON.parse(saved);
+    const session = sessionStorage.getItem("keihi-history");
+    if (session) return JSON.parse(session);
+    return [];
   } catch(e) { return []; }
 }
 function saveState(history) {
-  try { localStorage.setItem("keihi-history", JSON.stringify(history)); } catch(e) {}
+  const data = JSON.stringify(history);
+  try { localStorage.setItem("keihi-history", data); } catch(e) {}
+  try { sessionStorage.setItem("keihi-history", data); } catch(e) {}
+  // cookieにも保存（最大4KB）
+  try {
+    const mini = history.map(h => ({d:h.取引日,a:h._amount,k:h.勘定科目,n:h.案件名,t:h.取引内容,p:h.支払者}));
+    const str = JSON.stringify(mini);
+    if (str.length < 3800) document.cookie = "keihi=" + encodeURIComponent(str) + ";max-age=31536000;path=/";
+  } catch(e) {}
+}
+function loadFromCookie() {
+  try {
+    const match = document.cookie.match(/keihi=([^;]+)/);
+    if (!match) return [];
+    const mini = JSON.parse(decodeURIComponent(match[1]));
+    return mini.map(h => ({取引日:h.d, 出金額:Number(h.a).toLocaleString(), _amount:h.a, 勘定科目:h.k, 案件名:h.n||"", 取引内容:h.t, 支払者:h.p}));
+  } catch(e) { return []; }
+}
+function loadStateFull() {
+  const ls = loadState();
+  if (ls.length > 0) return ls;
+  return loadFromCookie();
 }
 
 let state = {
@@ -306,7 +333,7 @@ let state = {
   company: "",
   category: "",
   payer: "",
-  history: loadState(),
+  history: loadStateFull(),
   filter: "全員",
   currentView: "form",
 };
@@ -564,6 +591,9 @@ function closeModal(e) {
 }
 function closeModalDirect() {
   document.getElementById("edit-modal").classList.add("hidden");
+  document.getElementById("modal-delete-confirm").classList.add("hidden");
+  document.getElementById("modal-delete-btn").textContent = "削除";
+  document.getElementById("modal-delete-btn").onclick = deleteEntry;
   editingIndex = -1;
 }
 
@@ -588,12 +618,24 @@ function saveEdit() {
 
 function deleteEntry() {
   if (editingIndex < 0) return;
-  if (!confirm("この記録を削除しますか？")) return;
-  state.history.splice(editingIndex, 1);
-  saveState(state.history);
-  closeModalDirect();
-  renderList();
-  switchView("list");
+  const confirmBtn = document.getElementById("modal-delete-confirm");
+  const deleteBtn = document.getElementById("modal-delete-btn");
+  // 1回目タップ→「本当に削除」表示、2回目タップ→削除実行
+  if (confirmBtn.classList.contains("hidden")) {
+    confirmBtn.classList.remove("hidden");
+    deleteBtn.textContent = "キャンセル";
+    deleteBtn.onclick = () => {
+      confirmBtn.classList.add("hidden");
+      deleteBtn.textContent = "削除";
+      deleteBtn.onclick = deleteEntry;
+    };
+  } else {
+    state.history.splice(editingIndex, 1);
+    saveState(state.history);
+    closeModalDirect();
+    renderList();
+    switchView("list");
+  }
 }
 
 initChips();
