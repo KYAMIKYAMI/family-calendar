@@ -155,7 +155,8 @@
       <button class="modal-btn-save" onclick="saveEdit()">保存</button>
     </div>
     <div id="modal-delete-confirm" class="hidden" style="margin-top:12px;text-align:center;padding:12px;background:rgba(255,80,80,0.1);border-radius:10px;border:1px solid rgba(255,80,80,0.3);">
-      <div style="color:#ff6b6b;font-size:13px;font-weight:600;">もう一度「削除」を押すと削除されます</div>
+      <div style="color:#ff6b6b;font-size:13px;font-weight:600;margin-bottom:10px">本当に削除しますか？</div>
+      <button onclick="confirmDelete()" style="padding:10px 24px;border-radius:10px;border:none;background:#ff4444;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">削除する</button>
     </div>
   </div>
 </div>
@@ -618,24 +619,16 @@ function saveEdit() {
 
 function deleteEntry() {
   if (editingIndex < 0) return;
-  const confirmBtn = document.getElementById("modal-delete-confirm");
-  const deleteBtn = document.getElementById("modal-delete-btn");
-  // 1回目タップ→「本当に削除」表示、2回目タップ→削除実行
-  if (confirmBtn.classList.contains("hidden")) {
-    confirmBtn.classList.remove("hidden");
-    deleteBtn.textContent = "キャンセル";
-    deleteBtn.onclick = () => {
-      confirmBtn.classList.add("hidden");
-      deleteBtn.textContent = "削除";
-      deleteBtn.onclick = deleteEntry;
-    };
-  } else {
-    state.history.splice(editingIndex, 1);
-    saveState(state.history);
-    closeModalDirect();
-    renderList();
-    switchView("list");
-  }
+  document.getElementById("modal-delete-confirm").classList.remove("hidden");
+}
+
+function confirmDelete() {
+  if (editingIndex < 0) return;
+  state.history.splice(editingIndex, 1);
+  saveState(state.history);
+  closeModalDirect();
+  renderList();
+  switchView("list");
 }
 
 initChips();
