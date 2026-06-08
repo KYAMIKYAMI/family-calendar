@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>こどもスポット</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+
+  :root {
+    --sky: #e8f4f8;
+    --grass: #4caf82;
+    --grass-dark: #2d7a57;
+    --sun: #ffb830;
+    --accent: #ff6b6b;
+    --text: #2c3e50;
+    --text-light: #7f8c8d;
+    --card-bg: rgba(255,255,255,0.93);
+    --shadow: 0 4px 24px rgba(44,62,80,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--sky);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .scene-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .sky-layer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #b3d9f0 0%, #e8f4f8 60%, #c8e6c9 100%);
+  }
+  .sun {
+    position: absolute;
+    top: 18px; right: 36px;
+    width: 56px; height: 56px;
+    background: var(--sun);
+    border-radius: 50%;
+    box-shadow: 0 0 0 12px rgba(255,184,48,0.18), 0 0 0 24px rgba(255,184,48,0.08);
+    animation: pulse-sun 3s ease-in-out infinite;
+  }
+  @keyframes pulse-sun {
+    0%,100% { box-shadow: 0 0 0 12px rgba(255,184,48,0.18), 0 0 0 24px rgba(255,184,48,0.08); }
+    50% { box-shadow: 0 0 0 18px rgba(255,184,48,0.22), 0 0 0 32px rgba(255,184,48,0.10); }
+  }
+  .cloud { position: absolute; background: white; border-radius: 50px; opacity: 0.85; }
+  .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
+  .cloud1 { top: 28px; left: 8%; width: 80px; height: 28px; animation: drift 18s linear infinite; }
+  .cloud1::before { width: 36px; height: 36px; top: -18px; left: 12px; }
+  .cloud1::after { width: 24px; height: 24px; top: -12px; left: 38px; }
+  .cloud2 { top: 55px; left: 35%; width: 60px; height: 22px; animation: drift 24s linear infinite 4s; }
+  .cloud2::before { width: 28px; height: 28px; top: -14px; left: 8px; }
+  .cloud2::after { width: 20px; height: 20px; top: -10px; left: 28px; }
+  .cloud3 { top: 22px; left: 60%; width: 70px; height: 24px; animation: drift 20s linear infinite 8s; }
+  .cloud3::before { width: 32px; height: 32px; top: -16px; left: 10px; }
+  .cloud3::after { width: 22px; height: 22px; top: -11px; left: 34px; }
+  @keyframes drift {
+    from { transform: translateX(-120px); }
+    to { transform: translateX(110vw); }
+  }
+  .grass-layer {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 120px;
+    background: linear-gradient(180deg, #81c784 0%, #4caf82 60%, #2d7a57 100%);
+    border-radius: 60% 60% 0 0 / 30px 30px 0 0;
+  }
+
+  .app-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 0 0 140px 0;
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 20px 20px 8px;
+    text-align: center;
+  }
+  .app-title {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--grass-dark);
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 0 rgba(255,255,255,0.7);
+  }
+  .app-title span { color: var(--accent); }
+  .app-sub { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+
+  .radius-selector {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+  .radius-btn {
+    flex: 1; max-width: 100px;
+    padding: 8px 0;
+    border-radius: 20px;
+    border: 2px solid var(--grass);
+    background: white;
+    color: var(--grass-dark);
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .radius-btn.active {
+    background: var(--grass);
+    color: white;
+    border-color: var(--grass-dark);
+    box-shadow: 0 2px 8px rgba(76,175,130,0.3);
+  }
+
+  .locate-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 20px 10px;
+    padding: 14px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, var(--grass) 0%, var(--grass-dark) 100%);
+    color: white;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 16px; font-weight: 700;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(76,175,130,0.4);
+    transition: all 0.18s;
+    letter-spacing: 0.05em;
+  }
+  .locate-btn:hover { transform: translateY(-2px); }
+  .locate-btn:active { transform: translateY(0); }
+  .locate-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .locate-btn .icon { font-size: 20px; }
+
+  .status-bar {
+    text-align: center;
+    padding: 4px 20px 10px;
+    font-size: 12px;
+    color: var(--text-light);
+    min-height: 28px;
+  }
+  .status-bar.loading { color: var(--grass); }
+  .status-bar.error { color: var(--accent); }
+  .status-bar.success { color: var(--grass-dark); font-weight: 500; }
+
+  .category-filter {
+    display: flex;
+    gap: 6px;
+    padding: 0 20px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .category-filter::-webkit-scrollbar { display: none; }
+  .cat-btn {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border-radius: 14px;
+    border: 1.5px solid #d0e8d8;
+    background: white;
+    color: var(--text-light);
+    font-size: 12px;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .cat-btn.active {
+    background: #e8f5e9;
+    color: var(--grass-dark);
+    border-color: var(--grass);
+    font-weight: 700;
+  }
+
+  .spots-list {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .spot-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    animation: slide-up 0.25s ease;
+    border: 1.5px solid rgba(76,175,130,0.15);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .spot-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(44,62,80,0.14); }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .spot-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+  .spot-info { flex: 1; min-width: 0; }
+  .spot-name {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 15px; font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .spot-address {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .spot-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .spot-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: #e8f5e9;
+    color: var(--grass-dark);
+    font-weight: 500;
+  }
+  .map-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 7px;
+    padding: 5px 12px;
+    border-radius: 12px;
+    background: #fff3e0;
+    color: #e65100;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    font-family: 'Zen Maru Gothic', sans-serif;
+  }
+  .spot-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .spot-dist {
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 13px; font-weight: 700;
+    color: var(--grass-dark);
+    background: #e8f5e9;
+    padding: 3px 9px;
+    border-radius: 10px;
+  }
+  .spot-walk {
+    font-size: 10px;
+    color: #aaa;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-light);
+  }
+  .empty-state .big-icon { font-size: 56px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.9; }
+
+  .osm-credit {
+    text-align: center;
+    padding: 8px;
+    font-size: 10px;
+    color: #bbb;
+  }
+  .osm-credit a { color: #aaa; }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="scene-bg">
+  <div class="sky-layer"></div>
+  <div class="sun"></div>
+  <div class="cloud cloud1"></div>
+  <div class="cloud cloud2"></div>
+  <div class="cloud cloud3"></div>
+  <div class="grass-layer"></div>
+</div>
+
+<div class="app-wrap">
+  <header>
+    <div class="app-title">🌳 こども<span>スポット</span></div>
+    <div class="app-sub">無料・APIキー不要 | OpenStreetMap使用</div>
+  </header>
+
+  <div class="radius-selector">
+    <button class="radius-btn active" data-r="500" onclick="setRadius(this)">500m</button>
+    <button class="radius-btn" data-r="1000" onclick="setRadius(this)">1km</button>
+    <button class="radius-btn" data-r="1500" onclick="setRadius(this)">1.5km</button>
+  </div>
+
+  <button class="locate-btn" id="locateBtn" onclick="startSearch()">
+    <span class="icon">📍</span>
+    <span id="locateBtnText">現在地から探す</span>
+  </button>
+
+  <div class="status-bar" id="status">ボタンを押して近くのスポットを探そう</div>
+
+  <div class="category-filter" id="catFilter" style="display:none">
+    <button class="cat-btn active" data-cat="all" onclick="filterCat(this)">🗂 すべて</button>
+    <button class="cat-btn" data-cat="playground" onclick="filterCat(this)">🛝 遊具</button>
+    <button class="cat-btn" data-cat="park" onclick="filterCat(this)">🌳 公園</button>
+    <button class="cat-btn" data-cat="library" onclick="filterCat(this)">📚 図書館</button>
+    <button class="cat-btn" data-cat="kids" onclick="filterCat(this)">🧸 児童館</button>
+  </div>
+
+  <div class="spots-list" id="spotsList">
+    <div class="empty-state">
+      <div class="big-icon">🗺</div>
+      <p>現在地ボタンを押すと<br>近くの遊び場を<br>まとめて表示します<br><br><small style="font-size:11px;color:#ccc">完全無料・APIキー不要</small></p>
+    </div>
+  </div>
+
+  <div class="osm-credit" id="osmCredit" style="display:none">
+    © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors
+  </div>
+</div>
+
+<script>
+  let currentRadius = 500;
+  let currentLat = null;
+  let currentLng = null;
+  let allSpots = [];
+  let currentCat = 'all';
+
+  function setRadius(btn) {
+    document.querySelectorAll('.radius-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentRadius = parseInt(btn.dataset.r);
+    if (currentLat !== null) fetchSpots();
+  }
+
+  function setStatus(msg, type = '') {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status-bar ' + type;
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById('locateBtn');
+    const txt = document.getElementById('locateBtnText');
+    btn.disabled = on;
+    if (on) {
+      txt.innerHTML = '<span class="spinner"></span>検索中...';
+    } else {
+      txt.textContent = '現在地から探す';
+    }
+  }
+
+  function startSearch() {
+    if (!navigator.geolocation) {
+      setStatus('位置情報が使えません', 'error');
+      return;
+    }
+    setLoading(true);
+    setStatus('📡 現在地を取得中...', 'loading');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        currentLat = pos.coords.latitude;
+        currentLng = pos.coords.longitude;
+        fetchSpots();
+      },
+      err => {
+        setLoading(false);
+        setStatus('位置情報を取得できませんでした。ブラウザの設定を確認してください', 'error');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  }
+
+  async function fetchSpots() {
+    setStatus('🔍 OpenStreetMapからデータ取得中...', 'loading');
+
+    // Overpass APIクエリ（複数タイプを一括取得）
+    const r = currentRadius;
+    const lat = currentLat;
+    const lng = currentLng;
+
+    const query = `
+      [out:json][timeout:15];
+      (
+        node["leisure"="playground"](around:${r},${lat},${lng});
+        node["leisure"="park"](around:${r},${lat},${lng});
+        node["amenity"="library"](around:${r},${lat},${lng});
+        node["amenity"="community_centre"](around:${r},${lat},${lng});
+        way["leisure"="playground"](around:${r},${lat},${lng});
+        way["leisure"="park"](around:${r},${lat},${lng});
+        way["amenity"="library"](around:${r},${lat},${lng});
+        way["amenity"="community_centre"](around:${r},${lat},${lng});
+      );
+      out center;
+    `;
+
+    try {
+      const res = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query)
+      });
+
+      if (!res.ok) throw new Error('APIエラー');
+      const data = await res.json();
+
+      allSpots = data.elements
+        .map(el => {
+          const elLat = el.lat ?? el.center?.lat;
+          const elLng = el.lon ?? el.center?.lon;
+          if (!elLat || !elLng) return null;
+
+          const dist = calcDist(lat, lng, elLat, elLng);
+          const tags = el.tags || {};
+          const category = getCategory(tags);
+          const name = tags.name || tags['name:ja'] || getCategoryLabel(category);
+
+          return {
+            name,
+            address: buildAddress(tags),
+            distance: dist,
+            category,
+            tags: getSpotTags(tags, category),
+            lat: elLat,
+            lng: elLng,
+          };
+        })
+        .filter(s => s !== null)
+        .sort((a, b) => a.distance - b.distance);
+
+      // 重複除去（同名・近距離）
+      const seen = new Set();
+      allSpots = allSpots.filter(s => {
+        const key = s.name + '_' + Math.round(s.lat * 1000) + '_' + Math.round(s.lng * 1000);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      document.getElementById('catFilter').style.display = 'flex';
+      document.getElementById('osmCredit').style.display = 'block';
+      renderSpots();
+
+    } catch(e) {
+      setStatus('データ取得に失敗しました。少し待ってから再試行してください', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getCategory(tags) {
+    if (tags.leisure === 'playground') return 'playground';
+    if (tags.leisure === 'park') return 'park';
+    if (tags.amenity === 'library') return 'library';
+    if (tags.amenity === 'community_centre') return 'kids';
+    return 'park';
+  }
+
+  function getCategoryLabel(cat) {
+    const labels = { playground: '遊び場', park: '公園', library: '図書館', kids: '児童館・集会所' };
+    return labels[cat] || 'スポット';
+  }
+
+  function buildAddress(tags) {
+    const parts = [
+      tags['addr:prefecture'],
+      tags['addr:city'],
+      tags['addr:suburb'],
+      tags['addr:street'],
+      tags['addr:housenumber'],
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join('') : '';
+  }
+
+  function getSpotTags(tags, category) {
+    const result = [];
+    if (category === 'playground') result.push('遊具あり');
+    if (category === 'park') result.push('外遊び');
+    if (category === 'library') result.push('絵本', '無料');
+    if (category === 'kids') result.push('室内', '無料');
+    if (tags.playground === 'swing') result.push('ブランコ');
+    if (tags.playground === 'slide') result.push('滑り台');
+    if (tags.playground === 'sandpit') result.push('砂場');
+    if (tags.surface === 'sand') result.push('砂場');
+    if (tags.fee === 'no' || tags.access === 'yes') result.push('無料');
+    if (tags.toilets === 'yes' || tags['toilets:disposal']) result.push('トイレ');
+    if (tags.wheelchair === 'yes') result.push('バリアフリー');
+    return [...new Set(result)].slice(0, 4);
+  }
+
+  function calcDist(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 +
+      Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+  }
+
+  const catIcons = { playground: '🛝', park: '🌳', library: '📚', kids: '🧸' };
+  const catColors = { playground: '#fff9c4', park: '#e8f5e9', library: '#e3f2fd', kids: '#fff3e0' };
+
+  function filterCat(btn) {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentCat = btn.dataset.cat;
+    renderSpots();
+  }
+
+  function renderSpots() {
+    const filtered = currentCat === 'all'
+      ? allSpots
+      : allSpots.filter(s => s.category === currentCat);
+
+    const radiusLabel = currentRadius >= 1000 ? currentRadius/1000 + 'km' : currentRadius + 'm';
+
+    if (filtered.length === 0) {
+      setStatus(`半径${radiusLabel}以内にスポットが見つかりませんでした`, 'error');
+      document.getElementById('spotsList').innerHTML = `
+        <div class="empty-state">
+          <div class="big-icon">😢</div>
+          <p>このカテゴリのスポットが<br>見つかりませんでした<br>範囲を広げてみてください</p>
+        </div>`;
+      return;
+    }
+
+    setStatus(`📍 ${filtered.length}件見つかりました（半径${radiusLabel}）`, 'success');
+
+    document.getElementById('spotsList').innerHTML = filtered.map(s => {
+      const distText = s.distance >= 1000
+        ? (s.distance/1000).toFixed(1) + 'km'
+        : s.distance + 'm';
+      const walkMin = Math.ceil(s.distance / 50);
+      const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}&travelmode=walking`;
+      const spotTags = s.tags.map(t => `<span class="spot-tag">${t}</span>`).join('');
+      const addrHtml = s.address
+        ? `<div class="spot-address">📍 ${s.address}</div>`
+        : '';
+
+      return `
+        <div class="spot-card">
+          <div class="spot-icon" style="background:${catColors[s.category]}">${catIcons[s.category]}</div>
+          <div class="spot-info">
+            <div class="spot-name">${s.name}</div>
+            ${addrHtml}
+            <div class="spot-tags">${spotTags}</div>
+            <a class="map-link-btn" href="${mapsUrl}" target="_blank">🗺 ナビ開始</a>
+          </div>
+          <div class="spot-right">
+            <div class="spot-dist">${distText}</div>
+            <div class="spot-walk">徒歩約${walkMin}分</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+</script>
+</body>
+</html>
